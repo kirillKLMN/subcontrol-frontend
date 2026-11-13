@@ -1,4 +1,7 @@
 import DashboardPage from "./pages/DashboardPage";
+import SubscriptionsPage from "./pages/SubscriptionsPage";
+import Search from "./components/ui/Search";
+import { ServiceCell, OwnerCell, StatusBadge } from "./components/ui/RecordCells";
 import Empty from "./components/ui/Empty";
 import Icon from "./components/ui/Icon";
 import Badge from "./components/ui/Badge";
@@ -79,8 +82,6 @@ export default function App() {
   const [toast, setToast] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("Все статусы");
-  const [ownerFilter, setOwnerFilter] = useState("Все ответственные");
-  const [registryPeriod, setRegistryPeriod] = useState("all");
   const [period, setPeriod] = useState("30");
   const [taskTab, setTaskTab] = useState("Все действия");
   const [decisions, setDecisions] = useState<Record<number, string>>({});
@@ -105,7 +106,6 @@ export default function App() {
 
     setSearch("");
     setStatusFilter("Все статусы");
-    setOwnerFilter("Все ответственные");
   };
 
   const activeSubs = subscriptions.filter((s) => s.status !== "Отменена");
@@ -123,96 +123,6 @@ export default function App() {
       ),
     )
     .filter((status) => status !== "Подтверждено").length;
-  const filteredSubs = subscriptions.filter(
-    (s) =>
-      s.name.toLowerCase().includes(search.toLowerCase()) &&
-      (statusFilter === "Все статусы" || s.status === statusFilter) &&
-      (ownerFilter === "Все ответственные" || s.owner === ownerFilter) &&
-      (registryPeriod === "all" ||
-        (daysLeft(s.renewal) >= 0 && daysLeft(s.renewal) <= Number(registryPeriod))),
-  );
-  const rowService = (s: { name: string; tariff: string }) => (
-    <div className="service-cell">
-      <ServiceLogo name={s.name} />
-      <div>
-        <strong>{s.name}</strong>
-        <span>{s.tariff}</span>
-      </div>
-    </div>
-  );
-  const owner = (name: string) => (
-    <div className="person">
-      <Avatar name={name} />
-      <span>{name}</span>
-    </div>
-  );
-  const statusBadge = (status: string) => (
-    <Badge
-      tone={
-        status === "Активна" || status === "approved"
-          ? "green"
-          : status === "Trial" || status === "needs_info"
-            ? "amber"
-            : status === "rejected" || status === "Отменена"
-              ? "neutral"
-              : "purple"
-      }
-    >
-      {approvalLabel[status] || status}
-    </Badge>
-  );
-  const subscriptionTable = (list: Subscription[], compact = false) => (
-    <div className="table-scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>Сервис</th>
-            {!compact && <th>Стоимость / мес.</th>}
-            <th>Продление</th>
-            <th>Ответственный</th>
-            <th>Статус</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {list.map((s) => (
-            <tr key={s.id} onClick={() => setModal({ type: "service", id: s.id })}>
-              <td>{rowService(s)}</td>
-              {!compact && (
-                <td>
-                  <strong className="price">{money(s.price, s.currency)}</strong>
-                </td>
-              )}
-              <td>
-                <div className="date-cell">
-                  {dateLabel(s.renewal)} {new Date(s.renewal).getFullYear()}
-                  {daysLeft(s.renewal) <= 7 && s.status !== "Отменена" && (
-                    <span className="date-hint">
-                      {daysLeft(s.renewal) < 0 ? "Просрочено" : `Через ${daysLeft(s.renewal)} дн.`}
-                    </span>
-                  )}
-                </div>
-              </td>
-              <td>{owner(s.owner)}</td>
-              <td>{statusBadge(s.status)}</td>
-              <td>
-                <button className="icon-btn" aria-label={`Открыть ${s.name}`}>
-                  <Icon name="chevron" size={16} />
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {!list.length && (
-        <Empty
-          title="Подписки не найдены"
-          text="Измените поиск или фильтры либо добавьте новый сервис."
-        />
-      )}
-    </div>
-  );
-
   if (page === -1) {
     return <Navigate to="/" replace />;
   }
@@ -284,49 +194,14 @@ export default function App() {
               onTaskTabChange={setTaskTab}
               onNavigate={go}
               onOpenModal={setModal}
-              renderSubscriptionTable={subscriptionTable}
+              onOpenSubscription={(id) => setModal({ type: "service", id })}
             />
           )}
           {page === 1 && (
-            <section className="panel">
-              <div className="toolbar">
-                <Search value={search} onChange={setSearch} />
-                <select
-                  aria-label="Фильтр статуса"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  {["Все статусы", "Активна", "Trial", "Отменена"].map((s) => (
-                    <option key={s}>{s}</option>
-                  ))}
-                </select>
-                <select
-                  aria-label="Фильтр ответственного"
-                  value={ownerFilter}
-                  onChange={(e) => setOwnerFilter(e.target.value)}
-                >
-                  <option>Все ответственные</option>
-                  {[...new Set(subscriptions.map((s) => s.owner))].map((s) => (
-                    <option key={s}>{s}</option>
-                  ))}
-                </select>
-                <select
-                  aria-label="Срок продления"
-                  value={registryPeriod}
-                  onChange={(e) => setRegistryPeriod(e.target.value)}
-                >
-                  <option value="all">Любой срок</option>
-                  <option value="7">В ближайшие 7 дней</option>
-                  <option value="30">В ближайшие 30 дней</option>
-                </select>
-                <span className="toolbar-count">{filteredSubs.length} записей</span>
-              </div>
-              {subscriptionTable(filteredSubs)}
-              <div className="panel-footer">
-                <Icon name="info" size={16} />
-                Источник оплаты — справочное поле, не платёжная интеграция.
-              </div>
-            </section>
+            <SubscriptionsPage
+              subscriptions={subscriptions}
+              onOpenSubscription={(id) => setModal({ type: "service", id })}
+            />
           )}
           {page === 2 && (
             <>
@@ -414,7 +289,7 @@ export default function App() {
                         .sort((a, b) => a.renewal.localeCompare(b.renewal))
                         .map((s) => (
                           <tr key={s.id}>
-                            <td>{rowService(s)}</td>
+                            <td><ServiceCell name={s.name} tariff={s.tariff} /></td>
                             <td>
                               <div className="date-cell">
                                 {dateLabel(s.renewal)}
@@ -427,7 +302,7 @@ export default function App() {
                                 </Badge>
                               </div>
                             </td>
-                            <td>{owner(s.owner)}</td>
+                            <td><OwnerCell name={s.owner} /></td>
                             <td>{decisions[s.id] || "Принять решение"}</td>
                             <td>
                               <button
@@ -483,10 +358,10 @@ export default function App() {
                       )
                       .map((a) => (
                         <tr key={a.id} onClick={() => setModal({ type: "approval", id: a.id })}>
-                          <td>{rowService(a)}</td>
-                          <td>{owner(a.author)}</td>
+                          <td><ServiceCell name={a.name} tariff={a.tariff} /></td>
+                          <td><OwnerCell name={a.author} /></td>
                           <td>{money(a.price)}</td>
-                          <td>{statusBadge(a.status)}</td>
+                          <td><StatusBadge status={a.status} /></td>
                           <td>
                             <Icon name="chevron" size={17} />
                           </td>
@@ -603,8 +478,8 @@ export default function App() {
               return (
                 <>
                   <div className="detail-hero">
-                    {rowService(s)}
-                    {statusBadge(s.status)}
+                    <ServiceCell name={s.name} tariff={s.tariff} />
+                    <StatusBadge status={s.status} />
                   </div>
                   <div className="detail-grid">
                     {[
@@ -879,32 +754,6 @@ export default function App() {
   );
 }
 
-function Search({
-  value,
-  onChange,
-  placeholder = "Найти сервис",
-}: {
-  value: string;
-  onChange: (s: string) => void;
-  placeholder?: string;
-}) {
-  return (
-    <div className="search-field">
-      <Icon name="search" size={18} />
-      <input
-        aria-label={placeholder}
-        value={value}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-      />
-      {value && (
-        <button className="icon-btn" onClick={() => onChange("")} aria-label="Очистить поиск">
-          <Icon name="close" size={14} />
-        </button>
-      )}
-    </div>
-  );
-}
 function ModalShell({
   title,
   onClose,

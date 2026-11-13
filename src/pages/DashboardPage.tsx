@@ -1,10 +1,10 @@
-import type { ReactNode } from "react";
 import type { Approval, Checklist, Subscription } from "../data";
 import { dateLabel, daysLeft, money } from "../data";
 import Icon from "../components/ui/Icon";
 import Badge from "../components/ui/Badge";
 import ServiceLogo from "../components/ui/ServiceLogo";
 import Empty from "../components/ui/Empty";
+import SubscriptionTable from "../components/subscriptions/SubscriptionTable";
 
 type ModalRequest = { type: string; id?: number };
 
@@ -20,7 +20,7 @@ type DashboardPageProps = {
   onTaskTabChange: (tab: string) => void;
   onNavigate: (page: number) => void;
   onOpenModal: (modal: ModalRequest) => void;
-  renderSubscriptionTable: (list: Subscription[], compact?: boolean) => ReactNode;
+  onOpenSubscription: (id: number) => void;
 };
 
 export default function DashboardPage({
@@ -35,7 +35,7 @@ export default function DashboardPage({
   onTaskTabChange,
   onNavigate,
   onOpenModal,
-  renderSubscriptionTable,
+  onOpenSubscription,
 }: DashboardPageProps) {
   return (
     <>
@@ -299,7 +299,11 @@ export default function DashboardPage({
             Весь реестр <Icon name="arrow" size={16} />
           </button>
         </div>
-        {renderSubscriptionTable(subscriptions.slice(0, 3), true)}
+        <SubscriptionTable
+          subscriptions={subscriptions.slice(0, 3)}
+          compact
+          onOpenSubscription={onOpenSubscription}
+        />
       </section>
       <div className="bottom-note">
         <Icon name="check" size={15} />
