@@ -3,6 +3,7 @@ import Badge from "./components/ui/Badge";
 import Avatar from "./components/ui/Avatar";
 import ServiceLogo from "./components/ui/ServiceLogo";
 import Sidebar from "./components/layout/Sidebar";
+import Header from "./components/layout/Header";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
@@ -186,28 +187,10 @@ export default function App() {
         onOpenModal={(type) => setModal({ type })}
       />
       <div className="main-shell">
-        <header className="topbar">
-          <div className="breadcrumbs">
-            Рабочее пространство <span>/</span>
-            <strong>{navigation[page].title}</strong>
-          </div>
-          <div className="topbar-right">
-            <span className="demo-top">
-              <span />
-              Демо-данные
-            </span>
-            <span className="topbar-divider" />
-            <button
-              className="notification-btn"
-              aria-label="Открыть очередь напоминаний"
-              onClick={() => go(3)}
-            >
-              <Icon name="bell" />
-              <i />
-            </button>
-            <Avatar name="Анна Смирнова" />
-          </div>
-        </header>
+        <Header
+          pageTitle={navigation[page].title}
+          onOpenReminders={() => go(3)}
+        />
         <main>
           <div className="page-heading">
             <div>
