@@ -2,6 +2,7 @@ import Icon from "./components/ui/Icon";
 import Badge from "./components/ui/Badge";
 import Avatar from "./components/ui/Avatar";
 import ServiceLogo from "./components/ui/ServiceLogo";
+import Sidebar from "./components/layout/Sidebar";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
@@ -176,78 +177,14 @@ export default function App() {
 
   return (
     <div className="app">
-      <aside className="sidebar">
-        <a
-          className="brand"
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-            go(0);
-          }}
-        >
-          <span className="brand-icon">
-            <Icon name="layers" size={23} />
-          </span>
-          SubControl<span className="brand-period">.</span>
-        </a>
-        <button className="workspace" onClick={() => setModal({ type: "workspace" })}>
-          <span className="workspace-symbol">П</span>
-          <span>
-            <strong>Пространство команды</strong>
-            <small>Демо-компания</small>
-          </span>
-          <Icon name="down" size={15} />
-        </button>
-        <div className="nav-caption">РАБОЧЕЕ ПРОСТРАНСТВО</div>
-        <nav>
-          {navigation.map((n, i) => (
-            <button
-              key={n.title}
-              onClick={() => go(i)}
-              className={`nav-item ${page === i ? "selected" : ""}`}
-            >
-              <Icon name={n.icon} />
-              <span>{n.title}</span>
-              {i === 4 && pending.length > 0 && <b className="nav-count">{pending.length}</b>}
-              {i === 5 && openChecklists.length > 0 && <span className="nav-dot" />}
-            </button>
-          ))}
-        </nav>
-        <div className="sidebar-bottom">
-          <div className="demo-card">
-            <span className="demo-card-icon">
-              <Icon name="layers" size={19} />
-            </span>
-            <strong>
-              Порядок в подписках.
-              <br />
-              Спокойствие в работе.
-            </strong>
-            <p>
-              Все сроки и следующие шаги
-              <br />
-              под вашим контролем.
-            </p>
-            <span className="demo-tag">
-              <span />
-              Демонстрационный режим
-            </span>
-          </div>
-          <button className="nav-item help-link" onClick={() => setModal({ type: "help" })}>
-            <Icon name="help" />
-            <span>Помощь и возможности</span>
-            <Icon name="arrow" size={16} />
-          </button>
-          <div className="sidebar-profile">
-            <Avatar name="Анна Смирнова" size="large" />
-            <div>
-              <strong>Анна Смирнова</strong>
-              <small>Координатор</small>
-            </div>
-            <span className="profile-dot" />
-          </div>
-        </div>
-      </aside>
+      <Sidebar
+        items={navigation}
+        activePage={page}
+        pendingCount={pending.length}
+        openChecklistCount={openChecklists.length}
+        onNavigate={go}
+        onOpenModal={(type) => setModal({ type })}
+      />
       <div className="main-shell">
         <header className="topbar">
           <div className="breadcrumbs">
