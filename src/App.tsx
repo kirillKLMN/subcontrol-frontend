@@ -4,6 +4,7 @@ import Avatar from "./components/ui/Avatar";
 import ServiceLogo from "./components/ui/ServiceLogo";
 import Sidebar from "./components/layout/Sidebar";
 import Header from "./components/layout/Header";
+import { Navigate, useLocation, useNavigate } from "react-router";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
@@ -19,14 +20,36 @@ import {
   type Checklist,
 } from "./data";
 
+
 const navigation = [
-  { title: "Обзор", icon: "grid" },
-  { title: "Реестр подписок", icon: "layers" },
-  { title: "Аудит лицензий", icon: "people" },
-  { title: "Продления", icon: "calendar" },
-  { title: "Заявки", icon: "approvals" },
-  { title: "Офбординг", icon: "exit" },
+  { title: "Обзор", icon: "grid", path: "/" },
+  {
+    title: "Реестр подписок",
+    icon: "layers",
+    path: "/subscriptions",
+  },
+  {
+    title: "Аудит лицензий",
+    icon: "people",
+    path: "/licenses",
+  },
+  {
+    title: "Продления",
+    icon: "calendar",
+    path: "/reminders",
+  },
+  {
+    title: "Заявки",
+    icon: "approvals",
+    path: "/approvals",
+  },
+  {
+    title: "Офбординг",
+    icon: "exit",
+    path: "/offboarding",
+  },
 ];
+
 const descriptions = [
   "Всё, что важно для ваших подписок, — в одном месте.",
   "Сервисы, условия и ответственные в едином рабочем списке.",
@@ -38,7 +61,12 @@ const descriptions = [
 type Modal = { type: string; id?: number };
 
 export default function App() {
-  const [page, setPage] = useState(0);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const page = navigation.findIndex(
+    (item) => item.path === location.pathname
+  );
   const [subscriptions, setSubscriptions] = useState(initialSubscriptions);
   const [approvals, setApprovals] = useState(initialApprovals);
   const [checklists, setChecklists] = useState(initialChecklists);
@@ -65,12 +93,19 @@ export default function App() {
       return () => clearTimeout(t);
     }
   }, [toast]);
-  const go = (n: number) => {
-    setPage(n);
+  
+  const go = (index: number) => {
+    const destination = navigation[index];
+
+    if (!destination) return;
+
+    navigate(destination.path);
+
     setSearch("");
     setStatusFilter("Все статусы");
     setOwnerFilter("Все ответственные");
   };
+
   const activeSubs = subscriptions.filter((s) => s.status !== "Отменена");
   const renewals = activeSubs
     .filter((s) => daysLeft(s.renewal) <= 30)
@@ -176,6 +211,10 @@ export default function App() {
     </div>
   );
 
+  if (page === -1) {
+    return <Navigate to="/" replace />;
+  }
+  
   return (
     <div className="app">
       <Sidebar
