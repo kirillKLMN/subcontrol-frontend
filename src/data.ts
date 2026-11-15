@@ -184,7 +184,10 @@ export const initialChecklists: Checklist[] = [
     ],
   },
 ];
-export const demoToday = new Date("2025-06-18T12:00:00");
+export const demoToday = new Date();
+
+demoToday.setHours(12, 0, 0, 0);
+
 
 export const daysLeft = (date: string) => {
   if (!date) return Number.POSITIVE_INFINITY;

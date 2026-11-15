@@ -21,7 +21,16 @@ import Header from "./components/layout/Header";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router";
 
 import { useCallback, useEffect, useState } from "react";
-import { initialSubscriptions, initialApprovals, initialChecklists, daysLeft } from "./data";
+
+import {
+  initialApprovals,
+  initialChecklists,
+  daysLeft,
+} from "./data";
+
+import type { Subscription } from "./data";
+import { getSubscriptionsForUi } from "./api/subscriptions";
+
 
 
 const navigation = [
@@ -70,7 +79,13 @@ export default function App() {
   const page = navigation.findIndex(
     (item) => item.path === location.pathname
   );
-  const [subscriptions, setSubscriptions] = useState(initialSubscriptions);
+  
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+
+  const [subscriptionsLoading, setSubscriptionsLoading] = useState(true);
+
+  const [subscriptionsError, setSubscriptionsError] = useState<string | null>(null);
+
   const [approvals, setApprovals] = useState(initialApprovals);
   const [checklists, setChecklists] = useState(initialChecklists);
   const [modal, setModal] = useState<Modal | null>(null);
@@ -92,6 +107,41 @@ export default function App() {
       return () => clearTimeout(t);
     }
   }, [toast]);
+
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadSubscriptions() {
+      try {
+        const data = await getSubscriptionsForUi();
+
+        if (active) {
+          setSubscriptions(data);
+          setSubscriptionsError(null);
+        }
+      } catch (error) {
+        if (active) {
+          setSubscriptionsError(
+            error instanceof Error
+              ? error.message
+              : "Не удалось загрузить подписки",
+          );
+        }
+      } finally {
+        if (active) {
+          setSubscriptionsLoading(false);
+        }
+      }
+    }
+
+    void loadSubscriptions();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   
   const go = (index: number) => {
     const destination = navigation[index];
@@ -175,6 +225,15 @@ export default function App() {
               )}
             </div>
           </div>
+          {(page === 0 || page === 1 || page === 3) && subscriptionsLoading ? (
+          <div className="inline-note" role="status">
+            Загружаем подписки...
+          </div>
+        ) : (page === 0 || page === 1 || page === 3) && subscriptionsError ? (
+          <div className="inline-note" role="alert">
+            Не удалось загрузить подписки: {subscriptionsError}
+          </div>
+        ) : (
           <Routes>
             <Route
               path="/"
@@ -261,7 +320,10 @@ export default function App() {
                 />
               }
             />
+          
           </Routes>
+        )}
+
         </main>
       </div>
       {toast && (
