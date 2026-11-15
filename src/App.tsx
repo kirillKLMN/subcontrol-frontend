@@ -1,10 +1,9 @@
+import ApprovalsPage from "./pages/ApprovalsPage";
 import RemindersPage from "./pages/RemindersPage";
 import LicensesPage from "./pages/LicensesPage";
 import DashboardPage from "./pages/DashboardPage";
 import SubscriptionsPage from "./pages/SubscriptionsPage";
-import Search from "./components/ui/Search";
-import { ServiceCell, OwnerCell, StatusBadge } from "./components/ui/RecordCells";
-import Empty from "./components/ui/Empty";
+import { ServiceCell, StatusBadge } from "./components/ui/RecordCells";
 import Icon from "./components/ui/Icon";
 import Badge from "./components/ui/Badge";
 import Avatar from "./components/ui/Avatar";
@@ -82,8 +81,6 @@ export default function App() {
   setModal(null);
 }, []);
   const [toast, setToast] = useState("");
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("Все статусы");
   const [period, setPeriod] = useState("30");
   const [taskTab, setTaskTab] = useState("Все действия");
   const [decisions, setDecisions] = useState<Record<number, string>>({});
@@ -106,8 +103,6 @@ export default function App() {
 
     navigate(destination.path);
 
-    setSearch("");
-    setStatusFilter("Все статусы");
   };
 
   const activeSubs = subscriptions.filter((s) => s.status !== "Отменена");
@@ -226,65 +221,12 @@ export default function App() {
             />
           )}
           {page === 4 && (
-            <section className="panel">
-              <div className="toolbar">
-                <Search value={search} onChange={setSearch} placeholder="Найти заявку" />
-                <select
-                  aria-label="Статус заявки"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <option>Все статусы</option>
-                  {Object.entries(approvalLabel).map(([v, l]) => (
-                    <option key={v} value={v}>
-                      {l}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="table-scroll">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Сервис</th>
-                      <th>Инициатор</th>
-                      <th>Стоимость / мес.</th>
-                      <th>Статус</th>
-                      <th />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {approvals
-                      .filter(
-                        (a) =>
-                          a.name.toLowerCase().includes(search.toLowerCase()) &&
-                          (statusFilter === "Все статусы" || a.status === statusFilter),
-                      )
-                      .map((a) => (
-                        <tr key={a.id} onClick={() => setModal({ type: "approval", id: a.id })}>
-                          <td><ServiceCell name={a.name} tariff={a.tariff} /></td>
-                          <td><OwnerCell name={a.author} /></td>
-                          <td>{money(a.price)}</td>
-                          <td><StatusBadge status={a.status} /></td>
-                          <td>
-                            <Icon name="chevron" size={17} />
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-                {!approvals.some(
-                  (a) =>
-                    a.name.toLowerCase().includes(search.toLowerCase()) &&
-                    (statusFilter === "Все статусы" || a.status === statusFilter),
-                ) && (
-                  <Empty
-                    title="Заявок не найдено"
-                    text="Измените фильтр или создайте заявку на новый сервис."
-                  />
-                )}
-              </div>
-            </section>
+            <ApprovalsPage
+              approvals={approvals}
+              onOpenApproval={(id) =>
+                setModal({ type: "approval", id })
+              }
+            />
           )}
           {page === 5 && (
             <>
