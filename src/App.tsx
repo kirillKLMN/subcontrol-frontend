@@ -11,7 +11,7 @@ import Avatar from "./components/ui/Avatar";
 import ServiceLogo from "./components/ui/ServiceLogo";
 import Sidebar from "./components/layout/Sidebar";
 import Header from "./components/layout/Header";
-import { Navigate, useLocation, useNavigate } from "react-router";
+import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
@@ -179,64 +179,93 @@ export default function App() {
               )}
             </div>
           </div>
-          {page === 0 && (
-            <DashboardPage
-              subscriptions={subscriptions}
-              activeSubs={activeSubs}
-              renewals={renewals}
-              pending={pending}
-              openChecklists={openChecklists}
-              reviewCount={reviewCount}
-              decisions={decisions}
-              taskTab={taskTab}
-              onTaskTabChange={setTaskTab}
-              onNavigate={go}
-              onOpenModal={setModal}
-              onOpenSubscription={(id) => setModal({ type: "service", id })}
-            />
-          )}
-          {page === 1 && (
-            <SubscriptionsPage
-              subscriptions={subscriptions}
-              onOpenSubscription={(id) => setModal({ type: "service", id })}
-            />
-          )}
-          {page === 2 && (
-            <LicensesPage
-              selectedService={licenseService}
-              onSelectService={setLicenseService}
-              checked={checkedLicenses}
-              onChange={(key, value) => {
-                setCheckedLicenses((previous) => ({ ...previous, [key]: value }));
-                notify("Статус проверки обновлён в демо");
-              }}
-            />
-          )}
-          {page === 3 && (
-            <RemindersPage
-              subscriptions={subscriptions}
-              decisions={decisions}
-              period={period}
-              onPeriodChange={setPeriod}
-              onOpenRenewal={(id) => setModal({ type: "renewal", id })}
-            />
-          )}
-          {page === 4 && (
-            <ApprovalsPage
-              approvals={approvals}
-              onOpenApproval={(id) =>
-                setModal({ type: "approval", id })
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <DashboardPage
+                  subscriptions={subscriptions}
+                  activeSubs={activeSubs}
+                  renewals={renewals}
+                  pending={pending}
+                  openChecklists={openChecklists}
+                  reviewCount={reviewCount}
+                  decisions={decisions}
+                  taskTab={taskTab}
+                  onTaskTabChange={setTaskTab}
+                  onNavigate={go}
+                  onOpenModal={setModal}
+                  onOpenSubscription={(id) =>
+                    setModal({ type: "service", id })
+                  }
+                />
               }
             />
-          )}
-          {page === 5 && (
-            <OffboardingPage
-              checklists={checklists}
-              onOpenChecklist={(id) =>
-                setModal({ type: "checklist", id })
+            <Route
+              path="/subscriptions"
+              element={
+                <SubscriptionsPage
+                  subscriptions={subscriptions}
+                  onOpenSubscription={(id) =>
+                    setModal({ type: "service", id })
+                  }
+                />
               }
             />
-          )}
+            <Route
+              path="/licenses"
+              element={
+                <LicensesPage
+                  selectedService={licenseService}
+                  onSelectService={setLicenseService}
+                  checked={checkedLicenses}
+                  onChange={(key, value) => {
+                    setCheckedLicenses((previous) => ({
+                      ...previous,
+                      [key]: value,
+                    }));
+                    notify("Статус проверки обновлён в демо");
+                  }}
+                />
+              }
+            />
+            <Route
+              path="/reminders"
+              element={
+                <RemindersPage
+                  subscriptions={subscriptions}
+                  decisions={decisions}
+                  period={period}
+                  onPeriodChange={setPeriod}
+                  onOpenRenewal={(id) =>
+                    setModal({ type: "renewal", id })
+                  }
+                />
+              }
+            />
+            <Route
+              path="/approvals"
+              element={
+                <ApprovalsPage
+                  approvals={approvals}
+                  onOpenApproval={(id) =>
+                    setModal({ type: "approval", id })
+                  }
+                />
+              }
+            />
+            <Route
+              path="/offboarding"
+              element={
+                <OffboardingPage
+                  checklists={checklists}
+                  onOpenChecklist={(id) =>
+                    setModal({ type: "checklist", id })
+                  }
+                />
+              }
+            />
+          </Routes>
         </main>
       </div>
       {toast && (
