@@ -1,3 +1,4 @@
+import ChecklistDetail from "./components/modals/ChecklistDetail";
 import RenewalDetail from "./components/modals/RenewalDetail";
 import ApprovalDetail from "./components/modals/ApprovalDetail";
 import RequestForm from "./components/modals/RequestForm";
@@ -10,8 +11,6 @@ import LicensesPage from "./pages/LicensesPage";
 import DashboardPage from "./pages/DashboardPage";
 import SubscriptionsPage from "./pages/SubscriptionsPage";
 import Icon from "./components/ui/Icon";
-import Badge from "./components/ui/Badge";
-import Avatar from "./components/ui/Avatar";
 import ServiceLogo from "./components/ui/ServiceLogo";
 import Sidebar from "./components/layout/Sidebar";
 import Header from "./components/layout/Header";
@@ -399,98 +398,52 @@ export default function App() {
                 />
               );
             })()}
-          {modal.type === "checklist" &&
-            (() => {
-              const c = checklists.find((x) => x.id === modal.id)!;
-              return (
-                <>
-                  <div className="employee-heading">
-                    <Avatar name={c.employee} size="large" />
-                    <div>
-                      <h2>{c.employee}</h2>
-                      <p>{c.role}</p>
-                    </div>
-                    {c.closed && <Badge tone="green">Закрыт</Badge>}
-                  </div>
-                  <div className="inline-note">
-                    Демо-сценарий. Сервисы указаны вручную; автоматического отключения нет.
-                  </div>
-                  <table className="checklist-table">
-                    <thead>
-                      <tr>
-                        <th>Сервис</th>
-                        <th>Доступ отозван</th>
-                        <th>Лицензия возвращена</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {c.items.map((item, index) => (
-                        <tr key={index}>
-                          <td>
-                            <div className="service-cell">
-                              <ServiceLogo name={item.name} small />
-                              <strong>{item.name}</strong>
-                            </div>
-                          </td>
-                          {(["revoked", "returned"] as const).map((key) => (
-                            <td key={key}>
-                              <label className="checkbox-label">
-                                <input
-                                  type="checkbox"
-                                  disabled={c.closed}
-                                  checked={item[key]}
-                                  aria-label={`${item.name}: ${key === "revoked" ? "доступ отозван" : "лицензия возвращена"}`}
-                                  onChange={(e) =>
-                                    setChecklists((p) =>
-                                      p.map((x) =>
-                                        x.id === c.id
-                                          ? {
-                                              ...x,
-                                              items: x.items.map((i, j) =>
-                                                j === index ? { ...i, [key]: e.target.checked } : i,
-                                              ),
-                                            }
-                                          : x,
-                                      ),
-                                    )
-                                  }
-                                />
-                                {item[key] ? "Да" : "Нет"}
-                              </label>
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <div className="modal-actions">
-                    <p className="muted">
-                      {c.items.filter((i) => i.revoked && i.returned).length} из {c.items.length}{" "}
-                      сервисов проверено
-                    </p>
-                    <button
-                      className="btn primary"
-                      disabled={c.closed || !c.items.every((i) => i.revoked && i.returned)}
-                      onClick={() => {
-                        setChecklists((p) =>
-                          p.map((x) => (x.id === c.id ? { ...x, closed: true } : x)),
-                        );
-                        notify("Чек-лист закрыт");
-                        setModal(null);
-                      }}
-                    >
-                      {c.closed ? "Чек-лист закрыт" : "Закрыть чек-лист"}
-                      <Icon name="check" size={17} />
-                    </button>
-                  </div>
-                  {!c.closed && (
-                    <p className="form-hint">
-                      Закрытие доступно, когда обе отметки проставлены для каждого сервиса.
-                    </p>
-                  )}
-                </>
-              );
-            })()}
+            {modal.type === "checklist" &&
+              checklists
+                .filter((checklist) => checklist.id === modal.id)
+                .map((checklist) => (
+                  <ChecklistDetail
+                    key={checklist.id}
+                    checklist={checklist}
+                    onItemChange={(index, field, checked) => {
+                      setChecklists((previous) =>
+                        previous.map((current) =>
+                          current.id === checklist.id && !current.closed
+                            ? {
+                                ...current,
+                                items: current.items.map((item, itemIndex) =>
+                                  itemIndex === index
+                                    ? { ...item, [field]: checked }
+                                    : item,
+                                ),
+                              }
+                            : current,
+                        ),
+                      );
+                    }}
+                    onComplete={() => {
+                      if (
+                        checklist.closed ||
+                        !checklist.items.every(
+                          (item) => item.revoked && item.returned,
+                        )
+                      ) {
+                        return;
+                      }
+
+                      setChecklists((previous) =>
+                        previous.map((current) =>
+                          current.id === checklist.id
+                            ? { ...current, closed: true }
+                            : current,
+                        ),
+                      );
+
+                      notify("Чек-лист закрыт");
+                      setModal(null);
+                    }}
+                  />
+                ))}
           {modal.type === "new-checklist" && (
             <NewChecklist
               onSave={(c) => {
