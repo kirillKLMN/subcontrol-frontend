@@ -1,122 +1,468 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import WorkspaceContent from "./components/modals/WorkspaceContent";
+import HelpContent from "./components/modals/HelpContent";
+import ModalShell from "./components/modals/ModalShell";
+import ImportFlow from "./components/modals/ImportFlow";
+import NewChecklist from "./components/modals/NewChecklist";
+import ChecklistDetail from "./components/modals/ChecklistDetail";
+import RenewalDetail from "./components/modals/RenewalDetail";
+import ApprovalDetail from "./components/modals/ApprovalDetail";
+import RequestForm from "./components/modals/RequestForm";
+import SubscriptionForm from "./components/modals/SubscriptionForm";
+import ServiceDetail from "./components/modals/ServiceDetail";
+import ApprovalsPage from "./pages/ApprovalsPage";
+import OffboardingPage from "./pages/OffboardingPage";
+import RemindersPage from "./pages/RemindersPage";
+import LicensesPage from "./pages/LicensesPage";
+import DashboardPage from "./pages/DashboardPage";
+import SubscriptionsPage from "./pages/SubscriptionsPage";
+import Icon from "./components/ui/Icon";
+import Sidebar from "./components/layout/Sidebar";
+import Header from "./components/layout/Header";
+import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router";
 
-function App() {
-  const [count, setCount] = useState(0)
+import { useCallback, useEffect, useState } from "react";
+import { initialSubscriptions, initialApprovals, initialChecklists, daysLeft } from "./data";
 
+
+const navigation = [
+  { title: "Обзор", icon: "grid", path: "/" },
+  {
+    title: "Реестр подписок",
+    icon: "layers",
+    path: "/subscriptions",
+  },
+  {
+    title: "Аудит лицензий",
+    icon: "people",
+    path: "/licenses",
+  },
+  {
+    title: "Продления",
+    icon: "calendar",
+    path: "/reminders",
+  },
+  {
+    title: "Заявки",
+    icon: "approvals",
+    path: "/approvals",
+  },
+  {
+    title: "Офбординг",
+    icon: "exit",
+    path: "/offboarding",
+  },
+];
+
+const descriptions = [
+  "Всё, что важно для ваших подписок, — в одном месте.",
+  "Сервисы, условия и ответственные в едином рабочем списке.",
+  "Проверьте назначения и уточните, кому действительно нужен доступ.",
+  "Начните подготовку заранее — без спешки в последний день.",
+  "От потребности до решения ответственного.",
+  "Ручная проверка доступов и возврата лицензий.",
+];
+type Modal = { type: string; id?: number };
+
+export default function App() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const page = navigation.findIndex(
+    (item) => item.path === location.pathname
+  );
+  const [subscriptions, setSubscriptions] = useState(initialSubscriptions);
+  const [approvals, setApprovals] = useState(initialApprovals);
+  const [checklists, setChecklists] = useState(initialChecklists);
+  const [modal, setModal] = useState<Modal | null>(null);
+  const closeModal = useCallback(() => {
+  setModal(null);
+}, []);
+  const [toast, setToast] = useState("");
+  const [period, setPeriod] = useState("30");
+  const [taskTab, setTaskTab] = useState("Все действия");
+  const [decisions, setDecisions] = useState<Record<number, string>>({});
+  const [checkedLicenses, setCheckedLicenses] = useState<Record<string, string>>({});
+  const [licenseService, setLicenseService] = useState("Все сервисы");
+  const notify = (text: string) => {
+    setToast(text);
+  };
+  useEffect(() => {
+    if (toast) {
+      const t = setTimeout(() => setToast(""), 4500);
+      return () => clearTimeout(t);
+    }
+  }, [toast]);
+  
+  const go = (index: number) => {
+    const destination = navigation[index];
+
+    if (!destination) return;
+
+    navigate(destination.path);
+
+  };
+
+  const activeSubs = subscriptions.filter((s) => s.status !== "Отменена");
+  const renewals = activeSubs
+    .filter((s) => daysLeft(s.renewal) <= 30)
+    .sort((a, b) => a.renewal.localeCompare(b.renewal));
+  const pending = approvals.filter((a) => a.status === "sent" || a.status === "needs_info");
+  const openChecklists = checklists.filter((c) => !c.closed);
+  const reviewCount = ["Figma", "Notion", "Slack"]
+    .flatMap((name) =>
+      [0, 1, 2].map(
+        (i) =>
+          checkedLicenses[`${name}-${i}`] ||
+          (i === 0 || (i === 1 && name !== "Slack") ? "Требует проверки" : "Подтверждено"),
+      ),
+    )
+    .filter((status) => status !== "Подтверждено").length;
+  if (page === -1) {
+    return <Navigate to="/" replace />;
+  }
+  
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
+    <div className="app">
+      <Sidebar
+        items={navigation}
+        activePage={page}
+        pendingCount={pending.length}
+        openChecklistCount={openChecklists.length}
+        onNavigate={go}
+        onOpenModal={(type) => setModal({ type })}
+      />
+      <div className="main-shell">
+        <Header
+          pageTitle={navigation[page].title}
+          onOpenReminders={() => go(3)}
+        />
+        <main>
+          <div className="page-heading">
+            <div>
+              <div className="eyebrow">
+                {page === 0 ? "ВАШЕ РАБОЧЕЕ ПРОСТРАНСТВО" : "УПРАВЛЕНИЕ ПОДПИСКАМИ"}
+              </div>
+              <h1>
+                {page === 0 ? "Всё под контролем" : navigation[page].title}
+                <span className="heading-dot">.</span>
+              </h1>
+              <p>{descriptions[page]}</p>
+            </div>
+            <div className="heading-actions">
+              {(page === 0 || page === 1) && (
+                <>
+                  <button className="btn" onClick={() => setModal({ type: "import" })}>
+                    <Icon name="upload" size={17} />
+                    Импорт CSV
+                  </button>
+                  <button className="btn primary" onClick={() => setModal({ type: "add" })}>
+                    <Icon name="plus" size={18} />
+                    Добавить подписку
+                  </button>
+                </>
+              )}
+              {page === 4 && (
+                <button className="btn primary" onClick={() => setModal({ type: "request" })}>
+                  <Icon name="plus" size={18} />
+                  Создать заявку
+                </button>
+              )}
+              {page === 5 && (
+                <button className="btn primary" onClick={() => setModal({ type: "new-checklist" })}>
+                  <Icon name="plus" size={18} />
+                  Создать чек-лист
+                </button>
+              )}
+            </div>
+          </div>
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <DashboardPage
+                  subscriptions={subscriptions}
+                  activeSubs={activeSubs}
+                  renewals={renewals}
+                  pending={pending}
+                  openChecklists={openChecklists}
+                  reviewCount={reviewCount}
+                  decisions={decisions}
+                  taskTab={taskTab}
+                  onTaskTabChange={setTaskTab}
+                  onNavigate={go}
+                  onOpenModal={setModal}
+                  onOpenSubscription={(id) =>
+                    setModal({ type: "service", id })
+                  }
+                />
+              }
+            />
+            <Route
+              path="/subscriptions"
+              element={
+                <SubscriptionsPage
+                  subscriptions={subscriptions}
+                  onOpenSubscription={(id) =>
+                    setModal({ type: "service", id })
+                  }
+                />
+              }
+            />
+            <Route
+              path="/licenses"
+              element={
+                <LicensesPage
+                  selectedService={licenseService}
+                  onSelectService={setLicenseService}
+                  checked={checkedLicenses}
+                  onChange={(key, value) => {
+                    setCheckedLicenses((previous) => ({
+                      ...previous,
+                      [key]: value,
+                    }));
+                    notify("Статус проверки обновлён в демо");
+                  }}
+                />
+              }
+            />
+            <Route
+              path="/reminders"
+              element={
+                <RemindersPage
+                  subscriptions={subscriptions}
+                  decisions={decisions}
+                  period={period}
+                  onPeriodChange={setPeriod}
+                  onOpenRenewal={(id) =>
+                    setModal({ type: "renewal", id })
+                  }
+                />
+              }
+            />
+            <Route
+              path="/approvals"
+              element={
+                <ApprovalsPage
+                  approvals={approvals}
+                  onOpenApproval={(id) =>
+                    setModal({ type: "approval", id })
+                  }
+                />
+              }
+            />
+            <Route
+              path="/offboarding"
+              element={
+                <OffboardingPage
+                  checklists={checklists}
+                  onOpenChecklist={(id) =>
+                    setModal({ type: "checklist", id })
+                  }
+                />
+              }
+            />
+          </Routes>
+        </main>
+      </div>
+      {toast && (
+        <div className="toast" role="status">
+          <span>
+            <Icon name="check" size={18} />
+          </span>
+          {toast}
+          <button className="icon-btn" aria-label="Скрыть уведомление" onClick={() => setToast("")}>
+            <Icon name="close" size={15} />
+          </button>
         </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
+      )}
+      {modal && (
+        <ModalShell
+          title={
+            {
+              add: "Новая подписка",
+              edit: "Редактирование подписки",
+              service: "Карточка подписки",
+              import: "Импорт подписок из CSV",
+              request: "Новая заявка",
+              approval: "Рассмотрение заявки",
+              renewal: "Решение о продлении",
+              checklist: "Проверка доступов",
+              "new-checklist": "Новый чек-лист увольнения",
+              help: "О прототипе SubControl",
+              workspace: "Рабочее пространство",
+            }[modal.type] || ""
+          }
+          onClose={closeModal}
+          wide={modal.type === "import" || modal.type === "service"}
         >
-          Count is {count}
-        </button>
-      </section>
+          {(modal.type === "add" || modal.type === "edit") && (
+            <SubscriptionForm
+              existing={modal.id ? subscriptions.find((s) => s.id === modal.id) : undefined}
+              subscriptions={subscriptions}
+              onSave={(s) => {
+                setSubscriptions((p) =>
+                  modal.type === "edit" ? p.map((x) => (x.id === s.id ? s : x)) : [...p, s],
+                );
+                setModal(null);
+                notify("Подписка сохранена в демо-реестре");
+              }}
+            />
+          )}
+          {modal.type === "service" &&
+            subscriptions
+              .filter((subscription) => subscription.id === modal.id)
+              .map((subscription) => (
+                <ServiceDetail
+                  key={subscription.id}
+                  subscription={subscription}
+                  onEdit={() => {
+                    setModal({
+                      type: "edit",
+                      id: subscription.id,
+                    });
+                  }}
+                  onCheckUsage={() => {
+                    setLicenseService(subscription.name);
+                    go(2);
+                    setModal(null);
+                  }}
+                />
+              ))}
+          {modal.type === "import" && (
+            <ImportFlow
+              existing={subscriptions}
+              onImport={(rows) => {
+                setSubscriptions((p) => [...p, ...rows]);
+                notify(`В демо-реестр добавлено записей: ${rows.length}`);
+              }}
+            />
+          )}
+          {modal.type === "request" && (
+            <RequestForm
+              subscriptions={subscriptions}
+              onSave={(a) => {
+                setApprovals((p) => [...p, a]);
+                setModal(null);
+                notify("Заявка отправлена в демо-очередь");
+              }}
+            />
+          )}
+          {modal.type === "approval" &&
+            (() => {
+              const a = approvals.find((x) => x.id === modal.id)!;
+              return (
+                <ApprovalDetail
+                  approval={a}
+                  subscriptions={subscriptions}
+                  onDecision={(status, comment) => {
+                    if (a.status === "approved" || a.status === "rejected") return;
+                    setApprovals((p) =>
+                      p.map((x) => (x.id === a.id ? { ...x, status, comment } : x)),
+                    );
+                    if (status === "approved")
+                      setSubscriptions((p) => [
+                        ...p,
+                        {
+                          id: Date.now(),
+                          name: a.name,
+                          tariff: a.tariff,
+                          vendor: a.name,
+                          price: a.price,
+                          currency: "RUB",
+                          renewal: "2025-07-18",
+                          owner: "Анна Смирнова",
+                          status: "Активна",
+                          paySource: "Не указан",
+                        },
+                      ]);
+                    notify(
+                      status === "approved"
+                        ? "Заявка одобрена. Демо-запись добавлена в реестр; уточните условия."
+                        : "Решение по заявке сохранено в демо",
+                    );
+                    setModal(null);
+                  }}
+                />
+              );
+            })()}
+          {modal.type === "renewal" &&
+            (() => {
+              const s = subscriptions.find((x) => x.id === modal.id)!;
+              return (
+                <RenewalDetail
+                  subscription={s}
+                  decision={decisions[s.id]}
+                  onDecision={(d) => {
+                    setDecisions((p) => ({ ...p, [s.id]: d }));
+                    notify(
+                      "Решение зафиксировано в демо. Продление и оплата выполняются вне SubControl.",
+                    );
+                    setModal(null);
+                  }}
+                />
+              );
+            })()}
+            {modal.type === "checklist" &&
+              checklists
+                .filter((checklist) => checklist.id === modal.id)
+                .map((checklist) => (
+                  <ChecklistDetail
+                    key={checklist.id}
+                    checklist={checklist}
+                    onItemChange={(index, field, checked) => {
+                      setChecklists((previous) =>
+                        previous.map((current) =>
+                          current.id === checklist.id && !current.closed
+                            ? {
+                                ...current,
+                                items: current.items.map((item, itemIndex) =>
+                                  itemIndex === index
+                                    ? { ...item, [field]: checked }
+                                    : item,
+                                ),
+                              }
+                            : current,
+                        ),
+                      );
+                    }}
+                    onComplete={() => {
+                      if (
+                        checklist.closed ||
+                        !checklist.items.every(
+                          (item) => item.revoked && item.returned,
+                        )
+                      ) {
+                        return;
+                      }
 
-      <div className="ticks"></div>
+                      setChecklists((previous) =>
+                        previous.map((current) =>
+                          current.id === checklist.id
+                            ? { ...current, closed: true }
+                            : current,
+                        ),
+                      );
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+                      notify("Чек-лист закрыт");
+                      setModal(null);
+                    }}
+                  />
+                ))}
+          {modal.type === "new-checklist" && (
+            <NewChecklist
+              onSave={(c) => {
+                setChecklists((p) => [...p, c]);
+                setModal({ type: "checklist", id: c.id });
+                notify("Ручной чек-лист создан");
+              }}
+            />
+          )}
+          {modal.type === "help" && <HelpContent />}
+          {modal.type === "workspace" && (
+            <WorkspaceContent onContinue={closeModal} />
+          )}
+        </ModalShell>
+      )}
+    </div>
+  );
 }
-
-export default App
