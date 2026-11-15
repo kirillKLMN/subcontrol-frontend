@@ -1,3 +1,4 @@
+import RenewalDetail from "./components/modals/RenewalDetail";
 import ApprovalDetail from "./components/modals/ApprovalDetail";
 import RequestForm from "./components/modals/RequestForm";
 import SubscriptionForm from "./components/modals/SubscriptionForm";
@@ -17,7 +18,7 @@ import Header from "./components/layout/Header";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { initialSubscriptions, initialApprovals, initialChecklists, daysLeft, dateLabel, money, type Subscription, type Checklist } from "./data";
+import { initialSubscriptions, initialApprovals, initialChecklists, daysLeft, type Subscription, type Checklist } from "./data";
 
 
 const navigation = [
@@ -622,114 +623,6 @@ function ModalShell({
         <div className="modal-body">{children}</div>
       </div>
     </div>
-  );
-}
-function RenewalDetail({
-  subscription: s,
-  decision,
-  onDecision,
-}: {
-  subscription: Subscription;
-  decision?: string;
-  onDecision: (d: string) => void;
-}) {
-  const [choice, setChoice] = useState(
-    decision === "Подготовить отмену"
-      ? "Отменить"
-      : decision === "Запрошено уточнение"
-        ? "Запросить уточнение"
-        : "Продлить",
-  );
-  const [comment, setComment] = useState("");
-  const [confirm, setConfirm] = useState(false);
-  return (
-    <>
-      <div className="detail-hero">
-        <div className="service-cell">
-          <ServiceLogo name={s.name} />
-          <div>
-            <h2>{s.name}</h2>
-            <p>{s.tariff}</p>
-          </div>
-        </div>
-        <Badge tone="amber">{daysLeft(s.renewal)} дн. до срока</Badge>
-      </div>
-      <div className="detail-grid">
-        <div>
-          <small>Ответственный</small>
-          <strong>{s.owner}</strong>
-        </div>
-        <div>
-          <small>Стоимость / мес.</small>
-          <strong>{money(s.price, s.currency)}</strong>
-        </div>
-        <div>
-          <small>Дата продления</small>
-          <strong>
-            {dateLabel(s.renewal)} {new Date(s.renewal).getFullYear()}
-          </strong>
-        </div>
-        <div>
-          <small>Текущий шаг</small>
-          <strong>{decision || "Решение не принято"}</strong>
-        </div>
-      </div>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (choice === "Отменить" && !confirm) {
-            setConfirm(true);
-            return;
-          }
-          onDecision(
-            choice === "Продлить"
-              ? "Подготовить продление"
-              : choice === "Отменить"
-                ? "Подготовить отмену"
-                : "Запрошено уточнение",
-          );
-        }}
-      >
-        <label className="standalone-label">
-          Решение
-          <select
-            value={choice}
-            onChange={(e) => {
-              setChoice(e.target.value);
-              setConfirm(false);
-            }}
-          >
-            {["Продлить", "Запросить уточнение", "Отменить"].map((v) => (
-              <option key={v}>{v}</option>
-            ))}
-          </select>
-        </label>
-        <label className="standalone-label">
-          Комментарий {choice !== "Продлить" ? "*" : ""}
-          <textarea
-            required={choice !== "Продлить"}
-            rows={2}
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-          />
-        </label>
-        <div className="inline-note">
-          Это фиксация следующего шага в прототипе, не платёж, не продление и не отмена у
-          поставщика. Комментарий не отправляется и не сохраняется в API.
-        </div>
-        {confirm && (
-          <div className="warning-box">
-            Подтвердите подготовку отмены. Доступ у поставщика останется без изменений.
-          </div>
-        )}
-        <div className="modal-actions">
-          <button className={`btn ${confirm ? "danger" : "primary"}`} type="submit">
-            {confirm ? "Подтвердить решение" : "Зафиксировать решение"}
-            <Icon name="check" size={16} />
-          </button>
-        </div>
-      </form>
-    </>
   );
 }
 function NewChecklist({ onSave }: { onSave: (c: Checklist) => void }) {
