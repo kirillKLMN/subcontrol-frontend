@@ -1,3 +1,6 @@
+import WorkspaceContent from "./components/modals/WorkspaceContent";
+import HelpContent from "./components/modals/HelpContent";
+import ModalShell from "./components/modals/ModalShell";
 import ImportFlow from "./components/modals/ImportFlow";
 import NewChecklist from "./components/modals/NewChecklist";
 import ChecklistDetail from "./components/modals/ChecklistDetail";
@@ -17,7 +20,7 @@ import Sidebar from "./components/layout/Sidebar";
 import Header from "./components/layout/Header";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { initialSubscriptions, initialApprovals, initialChecklists, daysLeft } from "./data";
 
 
@@ -454,128 +457,12 @@ export default function App() {
               }}
             />
           )}
-          {modal.type === "help" && (
-            <div className="help-content">
-              <span className="modal-demo-tag">ИНТЕРАКТИВНЫЙ ПРОТОТИП</span>
-              <h2>Процесс виден. Решение — за вами.</h2>
-              <p>
-                Все записи и действия в этом интерфейсе — демонстрационные. Изменения хранятся
-                только до перезагрузки страницы. Подключения к API репозитория пока нет.
-              </p>
-              <h3>Сценарии из API</h3>
-              <p>
-                Реестр, ручное добавление и редактирование, проверка лицензий, решения по заявкам и
-                ручные чек-листы представлены как локальные демо-сценарии.
-              </p>
-              <h3>Концепты, требующие доработки backend</h3>
-              <p>
-                Предпросмотр и подтверждение CSV. Надёжный учёт купленных мест. Отправка и доставка
-                напоминаний.
-              </p>
-              <div className="inline-note">
-                <Icon name="info" size={18} />
-                SubControl не проводит платежи и не отключает доступы автоматически.
-              </div>
-              <a
-                className="text-link"
-                href="https://github.com/like-Ocean/SUBcontrol"
-                target="_blank"
-                rel="noreferrer"
-              >
-                Репозиторий проекта
-                <Icon name="arrow" size={16} />
-              </a>
-            </div>
-          )}
+          {modal.type === "help" && <HelpContent />}
           {modal.type === "workspace" && (
-            <div className="help-content">
-              <div className="employee-heading">
-                <span className="workspace-symbol">П</span>
-                <div>
-                  <h2>Демо-компания</h2>
-                  <p>Пространство команды</p>
-                </div>
-              </div>
-              <p>
-                Вы находитесь в демонстрационном пространстве. Данные условные, роли показаны только
-                для контекста, реального разграничения прав нет.
-              </p>
-              <button className="btn primary" onClick={() => setModal(null)}>
-                Продолжить работу
-              </button>
-            </div>
+            <WorkspaceContent onContinue={closeModal} />
           )}
         </ModalShell>
       )}
-    </div>
-  );
-}
-
-function ModalShell({
-  title,
-  onClose,
-  children,
-  wide,
-}: {
-  title: string;
-  onClose: () => void;
-  children: ReactNode;
-  wide?: boolean;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const previous = document.activeElement as HTMLElement;
-    ref.current?.focus();
-    const key = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      if (e.key === "Tab") {
-        const els = ref.current?.querySelectorAll<HTMLElement>(
-          "button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href]",
-        );
-        if (!els?.length) return;
-        const first = els[0],
-          last = els[els.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    };
-    document.addEventListener("keydown", key);
-    const old = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", key);
-      document.body.style.overflow = old;
-      previous?.focus();
-    };
-  }, [onClose]);
-  return (
-    <div
-      className="modal-backdrop"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div
-        ref={ref}
-        className={`modal ${wide ? "wide" : ""}`}
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        tabIndex={-1}
-      >
-        <div className="modal-heading">
-          <h2>{title}</h2>
-          <button onClick={onClose} className="icon-btn" aria-label="Закрыть">
-            <Icon name="close" />
-          </button>
-        </div>
-        <div className="modal-body">{children}</div>
-      </div>
     </div>
   );
 }
