@@ -1,5 +1,9 @@
 import { apiRequest } from "./client";
 
+import { toSubscription } from "./adapters/subscriptions";
+import type { Subscription } from "../data";
+
+
 import type {
   ApiSubscription,
   ApiSubscriptionCreate,
@@ -33,4 +37,11 @@ export function updateSubscription(
       body: data,
     },
   );
+}
+
+
+export async function getSubscriptionsForUi(): Promise<Subscription[]> {
+  const apiSubscriptions = await getSubscriptions();
+
+  return apiSubscriptions.map(toSubscription);
 }
