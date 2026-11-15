@@ -1,3 +1,4 @@
+import NewChecklist from "./components/modals/NewChecklist";
 import ChecklistDetail from "./components/modals/ChecklistDetail";
 import RenewalDetail from "./components/modals/RenewalDetail";
 import ApprovalDetail from "./components/modals/ApprovalDetail";
@@ -11,13 +12,12 @@ import LicensesPage from "./pages/LicensesPage";
 import DashboardPage from "./pages/DashboardPage";
 import SubscriptionsPage from "./pages/SubscriptionsPage";
 import Icon from "./components/ui/Icon";
-import ServiceLogo from "./components/ui/ServiceLogo";
 import Sidebar from "./components/layout/Sidebar";
 import Header from "./components/layout/Header";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { initialSubscriptions, initialApprovals, initialChecklists, daysLeft, type Subscription, type Checklist } from "./data";
+import { initialSubscriptions, initialApprovals, initialChecklists, daysLeft, type Subscription } from "./data";
 
 
 const navigation = [
@@ -576,64 +576,6 @@ function ModalShell({
         <div className="modal-body">{children}</div>
       </div>
     </div>
-  );
-}
-function NewChecklist({ onSave }: { onSave: (c: Checklist) => void }) {
-  const [services, setServices] = useState<string[]>([]);
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        const f = new FormData(e.currentTarget);
-        if (!services.length) return;
-        onSave({
-          id: Date.now(),
-          employee: String(f.get("employee")),
-          role: String(f.get("role")),
-          closed: false,
-          items: services.map((name) => ({ name, revoked: false, returned: false })),
-        });
-      }}
-    >
-      <p className="form-intro">
-        Укажите сотрудника и вручную выберите сервисы, которые необходимо проверить. Список не
-        синхронизируется с назначениями.
-      </p>
-      <div className="form-grid">
-        <label className="full">
-          Сотрудник *<input name="employee" required placeholder="Имя и фамилия" />
-        </label>
-        <label className="full">
-          Должность / подразделение
-          <input name="role" placeholder="Например, дизайнер" />
-        </label>
-      </div>
-      <h3 className="detail-label">Сервисы для ручной проверки *</h3>
-      <div className="service-choices">
-        {["Figma", "Notion", "Slack", "Miro", "OnlyOffice", "Zoom", "Linear", "Dropbox"].map(
-          (s) => (
-            <label key={s}>
-              <input
-                type="checkbox"
-                checked={services.includes(s)}
-                onChange={(e) =>
-                  setServices((p) => (e.target.checked ? [...p, s] : p.filter((x) => x !== s)))
-                }
-              />
-              <ServiceLogo name={s} small />
-              {s}
-            </label>
-          ),
-        )}
-      </div>
-      <div className="modal-actions">
-        <span className="form-hint">Выбрано: {services.length}</span>
-        <button className="btn primary" type="submit" disabled={!services.length}>
-          Создать чек-лист
-          <Icon name="arrow" size={16} />
-        </button>
-      </div>
-    </form>
   );
 }
 
