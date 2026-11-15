@@ -1,4 +1,5 @@
 import ApprovalsPage from "./pages/ApprovalsPage";
+import OffboardingPage from "./pages/OffboardingPage";
 import RemindersPage from "./pages/RemindersPage";
 import LicensesPage from "./pages/LicensesPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -229,48 +230,12 @@ export default function App() {
             />
           )}
           {page === 5 && (
-            <>
-              <div className="info-strip">
-                <Icon name="info" />
-                <div>
-                  <strong>Доступы отключает ответственный, не SubControl</strong>
-                  <span>
-                    Сервисы добавляются в чек-лист вручную. Отметки не изменяют назначения лицензий
-                    и не связаны с HR-системами.
-                  </span>
-                </div>
-              </div>
-              <div className="checklist-grid">
-                {checklists.map((c) => {
-                  const done = c.items.filter((i) => i.revoked && i.returned).length;
-                  return (
-                    <button
-                      className="panel checklist-card"
-                      key={c.id}
-                      onClick={() => setModal({ type: "checklist", id: c.id })}
-                    >
-                      <div className="checklist-top">
-                        <Avatar name={c.employee} size="large" />
-                        <Badge tone={c.closed ? "green" : "amber"}>
-                          {c.closed ? "Закрыт" : "В процессе"}
-                        </Badge>
-                      </div>
-                      <h2>{c.employee}</h2>
-                      <p>{c.role}</p>
-                      <div className="progress-track">
-                        <div style={{ width: `${(done / c.items.length) * 100}%` }} />
-                      </div>
-                      <div className="checklist-bottom">
-                        <span>
-                          Проверено {done} из {c.items.length} сервисов
-                        </span>
-                        <Icon name="arrow" size={18} />
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </>
+            <OffboardingPage
+              checklists={checklists}
+              onOpenChecklist={(id) =>
+                setModal({ type: "checklist", id })
+              }
+            />
           )}
         </main>
       </div>
