@@ -1,3 +1,4 @@
+import RequestForm from "./components/modals/RequestForm";
 import SubscriptionForm from "./components/modals/SubscriptionForm";
 import ServiceDetail from "./components/modals/ServiceDetail";
 import ApprovalsPage from "./pages/ApprovalsPage";
@@ -631,81 +632,6 @@ function ModalShell({
         <div className="modal-body">{children}</div>
       </div>
     </div>
-  );
-}
-function RequestForm({
-  subscriptions,
-  onSave,
-}: {
-  subscriptions: Subscription[];
-  onSave: (a: Approval) => void;
-}) {
-  const [name, setName] = useState("");
-  const similar = subscriptions.filter(
-    (s) => name.length > 1 && s.name.toLowerCase().includes(name.toLowerCase()),
-  );
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        const f = new FormData(e.currentTarget);
-        onSave({
-          id: Date.now(),
-          name: name.trim(),
-          tariff: String(f.get("tariff")),
-          price: Number(f.get("price")),
-          goal: String(f.get("goal")),
-          url: String(f.get("url")),
-          status: "sent",
-          comment: "",
-          author: "Анна Смирнова",
-        });
-      }}
-    >
-      <p className="form-intro">
-        Новый сервис сначала проходит согласование. Отправка заявки не оформляет покупку.
-      </p>
-      <div className="form-grid">
-        <label className="full">
-          Сервис *
-          <input
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Название сервиса"
-          />
-        </label>
-        {similar.length > 0 && (
-          <div className="warning-box full">
-            <Icon name="info" size={18} />
-            <span>
-              Похожее название в реестре: {similar.map((s) => s.name).join(", ")}. Проверьте
-              вручную; функциональная эквивалентность не установлена.
-            </span>
-          </div>
-        )}
-        <label>
-          Тариф *<input required name="tariff" placeholder="Тариф и количество мест" />
-        </label>
-        <label>
-          Стоимость в месяц, ₽ *<input type="number" min="0" step="0.01" required name="price" />
-        </label>
-        <label className="full">
-          Ссылка на сервис *<input required type="url" name="url" placeholder="https://" />
-        </label>
-        <label className="full">
-          Для чего нужен сервис? *
-          <textarea required name="goal" rows={3} placeholder="Опишите потребность команды" />
-        </label>
-      </div>
-      <div className="modal-actions">
-        <span className="form-hint">Демо-заявка</span>
-        <button className="btn primary" type="submit">
-          Отправить на согласование
-          <Icon name="arrow" size={16} />
-        </button>
-      </div>
-    </form>
   );
 }
 function ApprovalDetail({
