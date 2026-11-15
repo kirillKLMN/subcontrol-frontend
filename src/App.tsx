@@ -1,3 +1,4 @@
+import RemindersPage from "./pages/RemindersPage";
 import LicensesPage from "./pages/LicensesPage";
 import DashboardPage from "./pages/DashboardPage";
 import SubscriptionsPage from "./pages/SubscriptionsPage";
@@ -216,79 +217,13 @@ export default function App() {
             />
           )}
           {page === 3 && (
-            <>
-              <div className="info-strip">
-                <Icon name="bell" />
-                <div>
-                  <strong>Запланированные напоминания</strong>
-                  <span>
-                    Точки контроля: 30 / 15 / 7 / 1 день. Email и Telegram не отправляются.
-                    Демо-дата: 18 июня 2025.
-                  </span>
-                </div>
-              </div>
-              <section className="panel">
-                <div className="toolbar">
-                  <h2>Очередь продлений</h2>
-                  <select
-                    aria-label="Период продлений"
-                    value={period}
-                    onChange={(e) => setPeriod(e.target.value)}
-                  >
-                    <option value="7">Ближайшие 7 дней</option>
-                    <option value="15">Ближайшие 15 дней</option>
-                    <option value="30">Ближайшие 30 дней</option>
-                    <option value="365">Все продления</option>
-                  </select>
-                </div>
-                <div className="table-scroll">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Сервис</th>
-                        <th>Срок</th>
-                        <th>Ответственный</th>
-                        <th>Следующий шаг</th>
-                        <th />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {activeSubs
-                        .filter((s) => daysLeft(s.renewal) <= Number(period))
-                        .sort((a, b) => a.renewal.localeCompare(b.renewal))
-                        .map((s) => (
-                          <tr key={s.id}>
-                            <td><ServiceCell name={s.name} tariff={s.tariff} /></td>
-                            <td>
-                              <div className="date-cell">
-                                {dateLabel(s.renewal)}
-                                <Badge tone={daysLeft(s.renewal) <= 7 ? "amber" : "neutral"}>
-                                  {daysLeft(s.renewal) < 0
-                                    ? "Просрочено"
-                                    : daysLeft(s.renewal) === 0
-                                      ? "Сегодня"
-                                      : `${daysLeft(s.renewal)} дн.`}
-                                </Badge>
-                              </div>
-                            </td>
-                            <td><OwnerCell name={s.owner} /></td>
-                            <td>{decisions[s.id] || "Принять решение"}</td>
-                            <td>
-                              <button
-                                className="btn btn-small"
-                                onClick={() => setModal({ type: "renewal", id: s.id })}
-                              >
-                                Рассмотреть
-                                <Icon name="arrow" size={14} />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            </>
+            <RemindersPage
+              subscriptions={subscriptions}
+              decisions={decisions}
+              period={period}
+              onPeriodChange={setPeriod}
+              onOpenRenewal={(id) => setModal({ type: "renewal", id })}
+            />
           )}
           {page === 4 && (
             <section className="panel">
