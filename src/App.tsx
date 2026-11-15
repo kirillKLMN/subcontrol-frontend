@@ -1,10 +1,10 @@
+import ServiceDetail from "./components/modals/ServiceDetail";
 import ApprovalsPage from "./pages/ApprovalsPage";
 import OffboardingPage from "./pages/OffboardingPage";
 import RemindersPage from "./pages/RemindersPage";
 import LicensesPage from "./pages/LicensesPage";
 import DashboardPage from "./pages/DashboardPage";
 import SubscriptionsPage from "./pages/SubscriptionsPage";
-import { ServiceCell, StatusBadge } from "./components/ui/RecordCells";
 import Icon from "./components/ui/Icon";
 import Badge from "./components/ui/Badge";
 import Avatar from "./components/ui/Avatar";
@@ -313,55 +313,25 @@ export default function App() {
             />
           )}
           {modal.type === "service" &&
-            (() => {
-              const s = subscriptions.find((x) => x.id === modal.id)!;
-              return (
-                <>
-                  <div className="detail-hero">
-                    <ServiceCell name={s.name} tariff={s.tariff} />
-                    <StatusBadge status={s.status} />
-                  </div>
-                  <div className="detail-grid">
-                    {[
-                      ["Поставщик", s.vendor],
-                      ["Стоимость в месяц", money(s.price, s.currency)],
-                      [
-                        "Дата продления",
-                        dateLabel(s.renewal) + " " + new Date(s.renewal).getFullYear(),
-                      ],
-                      ["Ответственный", s.owner],
-                      ["Источник оплаты", s.paySource],
-                      ["Купленные места", "Нет подтверждённых данных"],
-                    ].map(([label, value]) => (
-                      <div key={label}>
-                        <small>{label}</small>
-                        <strong>{value}</strong>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="modal-actions">
-                    <button className="btn" onClick={() => setModal({ type: "edit", id: s.id })}>
-                      Редактировать
-                    </button>
-                    <button
-                      className="btn primary"
-                      onClick={() => {
-                        go(2);
-                        setLicenseService(s.name);
-                        setModal(null);
-                      }}
-                    >
-                      Проверить использование
-                      <Icon name="arrow" size={16} />
-                    </button>
-                  </div>
-                  <div className="inline-note">
-                    <Icon name="info" size={16} />
-                    Стоимость указана на уровне подписки, не одного места.
-                  </div>
-                </>
-              );
-            })()}
+            subscriptions
+              .filter((subscription) => subscription.id === modal.id)
+              .map((subscription) => (
+                <ServiceDetail
+                  key={subscription.id}
+                  subscription={subscription}
+                  onEdit={() => {
+                    setModal({
+                      type: "edit",
+                      id: subscription.id,
+                    });
+                  }}
+                  onCheckUsage={() => {
+                    setLicenseService(subscription.name);
+                    go(2);
+                    setModal(null);
+                  }}
+                />
+              ))}
           {modal.type === "import" && (
             <ImportFlow
               existing={subscriptions}
