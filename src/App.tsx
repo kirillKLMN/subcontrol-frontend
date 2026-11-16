@@ -1,3 +1,12 @@
+import { createSubscription, updateSubscription } from "./api/subscriptions";
+
+import {
+  toSubscription,
+  toApiSubscriptionCreate,
+  toApiSubscriptionPatch,
+} from "./api/adapters/subscriptions";
+
+
 import WorkspaceContent from "./components/modals/WorkspaceContent";
 import HelpContent from "./components/modals/HelpContent";
 import ModalShell from "./components/modals/ModalShell";
@@ -21,7 +30,16 @@ import Header from "./components/layout/Header";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router";
 
 import { useCallback, useEffect, useState } from "react";
-import { initialSubscriptions, initialApprovals, initialChecklists, daysLeft } from "./data";
+
+import {
+  initialApprovals,
+  initialChecklists,
+  daysLeft,
+} from "./data";
+
+import type { Subscription } from "./data";
+import { getSubscriptionsForUi } from "./api/subscriptions";
+
 
 
 const navigation = [
@@ -70,7 +88,13 @@ export default function App() {
   const page = navigation.findIndex(
     (item) => item.path === location.pathname
   );
-  const [subscriptions, setSubscriptions] = useState(initialSubscriptions);
+  
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+
+  const [subscriptionsLoading, setSubscriptionsLoading] = useState(true);
+
+  const [subscriptionsError, setSubscriptionsError] = useState<string | null>(null);
+
   const [approvals, setApprovals] = useState(initialApprovals);
   const [checklists, setChecklists] = useState(initialChecklists);
   const [modal, setModal] = useState<Modal | null>(null);
@@ -81,7 +105,7 @@ export default function App() {
   const [period, setPeriod] = useState("30");
   const [taskTab, setTaskTab] = useState("Все действия");
   const [decisions, setDecisions] = useState<Record<number, string>>({});
-  const [checkedLicenses, setCheckedLicenses] = useState<Record<string, string>>({});
+  const checkedLicenses: Record<string, string> = {};
   const [licenseService, setLicenseService] = useState("Все сервисы");
   const notify = (text: string) => {
     setToast(text);
@@ -92,6 +116,41 @@ export default function App() {
       return () => clearTimeout(t);
     }
   }, [toast]);
+
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadSubscriptions() {
+      try {
+        const data = await getSubscriptionsForUi();
+
+        if (active) {
+          setSubscriptions(data);
+          setSubscriptionsError(null);
+        }
+      } catch (error) {
+        if (active) {
+          setSubscriptionsError(
+            error instanceof Error
+              ? error.message
+              : "Не удалось загрузить подписки",
+          );
+        }
+      } finally {
+        if (active) {
+          setSubscriptionsLoading(false);
+        }
+      }
+    }
+
+    void loadSubscriptions();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   
   const go = (index: number) => {
     const destination = navigation[index];
@@ -175,6 +234,15 @@ export default function App() {
               )}
             </div>
           </div>
+          {(page === 0 || page === 1 || page === 3) && subscriptionsLoading ? (
+          <div className="inline-note" role="status">
+            Загружаем подписки...
+          </div>
+        ) : (page === 0 || page === 1 || page === 3) && subscriptionsError ? (
+          <div className="inline-note" role="alert">
+            Не удалось загрузить подписки: {subscriptionsError}
+          </div>
+        ) : (
           <Routes>
             <Route
               path="/"
@@ -211,18 +279,11 @@ export default function App() {
             <Route
               path="/licenses"
               element={
-                <LicensesPage
-                  selectedService={licenseService}
-                  onSelectService={setLicenseService}
-                  checked={checkedLicenses}
-                  onChange={(key, value) => {
-                    setCheckedLicenses((previous) => ({
-                      ...previous,
-                      [key]: value,
-                    }));
-                    notify("Статус проверки обновлён в демо");
-                  }}
-                />
+              <LicensesPage
+                subscriptions={subscriptions}
+                selectedService={licenseService}
+                onSelectService={setLicenseService}
+              />
               }
             />
             <Route
@@ -261,7 +322,10 @@ export default function App() {
                 />
               }
             />
+          
           </Routes>
+        )}
+
         </main>
       </div>
       {toast && (
@@ -298,13 +362,39 @@ export default function App() {
           {(modal.type === "add" || modal.type === "edit") && (
             <SubscriptionForm
               existing={modal.id ? subscriptions.find((s) => s.id === modal.id) : undefined}
-              subscriptions={subscriptions}
-              onSave={(s) => {
-                setSubscriptions((p) =>
-                  modal.type === "edit" ? p.map((x) => (x.id === s.id ? s : x)) : [...p, s],
-                );
+              subscriptions={subscriptions}             
+              onSave={async (subscription) => {
+                if (modal.type === "edit") {
+                  const updated = await updateSubscription(
+                    subscription.id,
+                    toApiSubscriptionPatch(subscription),
+                  );
+
+                  const updatedSubscription = toSubscription(updated);
+
+                  setSubscriptions((previous) =>
+                    previous.map((item) =>
+                      item.id === updatedSubscription.id
+                        ? updatedSubscription
+                        : item,
+                    ),
+                  );
+
+                  notify("Подписка успешно обновлена");
+                } else {
+                  const created = await createSubscription(
+                    toApiSubscriptionCreate(subscription),
+                  );
+
+                  setSubscriptions((previous) => [
+                    ...previous,
+                    toSubscription(created),
+                  ]);
+
+                  notify("Подписка успешно создана");
+                }
+
                 setModal(null);
-                notify("Подписка сохранена в демо-реестре");
               }}
             />
           )}
@@ -327,13 +417,15 @@ export default function App() {
                     setModal(null);
                   }}
                 />
-              ))}
+              ))}      
           {modal.type === "import" && (
             <ImportFlow
-              existing={subscriptions}
-              onImport={(rows) => {
-                setSubscriptions((p) => [...p, ...rows]);
-                notify(`В демо-реестр добавлено записей: ${rows.length}`);
+              onImported={async () => {
+                const updatedSubscriptions =
+                  await getSubscriptionsForUi();
+
+                setSubscriptions(updatedSubscriptions);
+                setSubscriptionsError(null);
               }}
             />
           )}

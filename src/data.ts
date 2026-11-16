@@ -184,13 +184,42 @@ export const initialChecklists: Checklist[] = [
     ],
   },
 ];
-export const demoToday = new Date("2025-06-18T12:00:00");
-export const daysLeft = (date: string) =>
-  Math.ceil((new Date(date + "T12:00:00").getTime() - demoToday.getTime()) / 86400000);
-export const dateLabel = (date: string) =>
-  new Date(date + "T12:00:00")
-    .toLocaleDateString("ru-RU", { day: "numeric", month: "short" })
+export const demoToday = new Date();
+
+demoToday.setHours(12, 0, 0, 0);
+
+
+export const daysLeft = (date: string) => {
+  if (!date) return Number.POSITIVE_INFINITY;
+
+  const timestamp = new Date(`${date}T12:00:00`).getTime();
+
+  if (Number.isNaN(timestamp)) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  return Math.ceil(
+    (timestamp - demoToday.getTime()) / 86400000,
+  );
+};
+
+export const dateLabel = (date: string) => {
+  if (!date) return "Не указана";
+
+  const parsedDate = new Date(`${date}T12:00:00`);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return "Некорректная дата";
+  }
+
+  return parsedDate
+    .toLocaleDateString("ru-RU", {
+      day: "numeric",
+      month: "short",
+    })
     .replace(".", "");
+};
+
 export const money = (n: number, currency = "RUB") =>
   new Intl.NumberFormat("ru-RU", { style: "currency", currency, maximumFractionDigits: 0 }).format(
     n,
