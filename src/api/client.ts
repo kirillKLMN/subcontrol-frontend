@@ -26,7 +26,9 @@ export async function apiRequest<T>(
 
   const requestHeaders = new Headers(headers);
 
-  if (body !== undefined) {
+  const isFormData = body instanceof FormData;
+
+  if (body !== undefined && !isFormData) {
     requestHeaders.set("Content-Type", "application/json");
   }
 
@@ -36,9 +38,13 @@ export async function apiRequest<T>(
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...rest,
-    headers: requestHeaders,
+    headers: requestHeaders,   
     ...(body !== undefined
-      ? { body: JSON.stringify(body) }
+      ? {
+          body: isFormData
+            ? body
+            : JSON.stringify(body),
+        }
       : {}),
   });
 

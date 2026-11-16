@@ -45,3 +45,30 @@ export async function getSubscriptionsForUi(): Promise<Subscription[]> {
 
   return apiSubscriptions.map(toSubscription);
 }
+
+
+export type CsvImportCandidate = {
+  name: string;
+  status: string;
+};
+
+export type CsvImportResult = {
+  created: number;
+  candidates: CsvImportCandidate[];
+};
+
+export function importSubscriptionsCsv(
+  file: File,
+): Promise<CsvImportResult> {
+  const formData = new FormData();
+
+  formData.append("file", file);
+
+  return apiRequest<CsvImportResult>(
+    "/api/subscriptions/import-csv",
+    {
+      method: "POST",
+      body: formData,
+    },
+  );
+}
