@@ -1,9 +1,9 @@
-import type { Subscription } from "../data";
-import { daysLeft, dateLabel } from "../data";
+import { dateLabel, daysLeft, type Subscription } from "../data";
 
-import Icon from "../components/ui/Icon";
 import Badge from "../components/ui/Badge";
-import { ServiceCell, OwnerCell } from "../components/ui/RecordCells";
+import Empty from "../components/ui/Empty";
+import Icon from "../components/ui/Icon";
+import { OwnerCell, ServiceCell } from "../components/ui/RecordCells";
 
 type RemindersPageProps = {
   subscriptions: Subscription[];
@@ -22,19 +22,35 @@ export default function RemindersPage({
 }: RemindersPageProps) {
   const visibleSubscriptions = subscriptions
     .filter((subscription) => subscription.status !== "Отменена")
-    .filter((subscription) => daysLeft(subscription.renewal) <= Number(period))
-    .sort((a, b) => a.renewal.localeCompare(b.renewal));
+    .map((subscription) => ({
+      subscription,
+      remainingDays: daysLeft(subscription.renewal),
+    }))
+    .filter(({ remainingDays }) => {
+      if (!Number.isFinite(remainingDays)) return false;
+
+      if (period === "365") return true;
+
+      return remainingDays >= 0 && remainingDays <= Number(period);
+    })
+    .sort((first, second) =>
+      first.subscription.renewal.localeCompare(
+        second.subscription.renewal,
+      ),
+    );
 
   return (
     <>
       <div className="info-strip">
         <Icon name="bell" />
+
         <div>
           <strong>Запланированные напоминания</strong>
+
           <span>
             Точки контроля: 30 / 15 / 7 / 1 день.
+            Даты продления загружаются из реестра.
             Email и Telegram не отправляются.
-            Демо-дата: 18 июня 2025.
           </span>
         </div>
       </div>
@@ -46,7 +62,9 @@ export default function RemindersPage({
           <select
             aria-label="Период продлений"
             value={period}
-            onChange={(event) => onPeriodChange(event.target.value)}
+            onChange={(event) =>
+              onPeriodChange(event.target.value)
+            }
           >
             <option value="7">Ближайшие 7 дней</option>
             <option value="15">Ближайшие 15 дней</option>
@@ -68,10 +86,8 @@ export default function RemindersPage({
             </thead>
 
             <tbody>
-              {visibleSubscriptions.map((subscription) => {
-                const remainingDays = daysLeft(subscription.renewal);
-
-                return (
+              {visibleSubscriptions.map(
+                ({ subscription, remainingDays }) => (
                   <tr key={subscription.id}>
                     <td>
                       <ServiceCell
@@ -85,7 +101,11 @@ export default function RemindersPage({
                         {dateLabel(subscription.renewal)}
 
                         <Badge
-                          tone={remainingDays <= 7 ? "amber" : "neutral"}
+                          tone={
+                            remainingDays <= 7
+                              ? "amber"
+                              : "neutral"
+                          }
                         >
                           {remainingDays < 0
                             ? "Просрочено"
@@ -101,23 +121,33 @@ export default function RemindersPage({
                     </td>
 
                     <td>
-                      {decisions[subscription.id] || "Принять решение"}
+                      {decisions[subscription.id] ||
+                        "Принять решение"}
                     </td>
 
                     <td>
                       <button
                         className="btn btn-small"
-                        onClick={() => onOpenRenewal(subscription.id)}
+                        onClick={() =>
+                          onOpenRenewal(subscription.id)
+                        }
                       >
                         Рассмотреть
                         <Icon name="arrow" size={14} />
                       </button>
                     </td>
                   </tr>
-                );
-              })}
+                ),
+              )}
             </tbody>
           </table>
+
+          {visibleSubscriptions.length === 0 && (
+            <Empty
+              title="Продлений не найдено"
+              text="Измените период или укажите дату продления у подписки."
+            />
+          )}
         </div>
       </section>
     </>
