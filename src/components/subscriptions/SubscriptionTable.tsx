@@ -38,8 +38,11 @@ export default function SubscriptionTable({
                 </td>
               )}
               <td>
-                <div className="date-cell">
-                  {dateLabel(s.renewal)} {new Date(s.renewal).getFullYear()}
+                <div className="date-cell">  
+                  {dateLabel(s.renewal)}
+                  {s.renewal && !Number.isNaN(new Date(s.renewal).getTime())
+                    ? ` ${new Date(s.renewal).getFullYear()}`
+                    : null}
                   {daysLeft(s.renewal) <= 7 && s.status !== "Отменена" && (
                     <span className="date-hint">
                       {daysLeft(s.renewal) < 0 ? "Просрочено" : `Через ${daysLeft(s.renewal)} дн.`}

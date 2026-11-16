@@ -424,13 +424,15 @@ export default function App() {
                     setModal(null);
                   }}
                 />
-              ))}
+              ))}      
           {modal.type === "import" && (
             <ImportFlow
-              existing={subscriptions}
-              onImport={(rows) => {
-                setSubscriptions((p) => [...p, ...rows]);
-                notify(`В демо-реестр добавлено записей: ${rows.length}`);
+              onImported={async () => {
+                const updatedSubscriptions =
+                  await getSubscriptionsForUi();
+
+                setSubscriptions(updatedSubscriptions);
+                setSubscriptionsError(null);
               }}
             />
           )}
