@@ -105,7 +105,7 @@ export default function App() {
   const [period, setPeriod] = useState("30");
   const [taskTab, setTaskTab] = useState("Все действия");
   const [decisions, setDecisions] = useState<Record<number, string>>({});
-  const [checkedLicenses, setCheckedLicenses] = useState<Record<string, string>>({});
+  const checkedLicenses: Record<string, string> = {};
   const [licenseService, setLicenseService] = useState("Все сервисы");
   const notify = (text: string) => {
     setToast(text);
@@ -279,18 +279,11 @@ export default function App() {
             <Route
               path="/licenses"
               element={
-                <LicensesPage
-                  selectedService={licenseService}
-                  onSelectService={setLicenseService}
-                  checked={checkedLicenses}
-                  onChange={(key, value) => {
-                    setCheckedLicenses((previous) => ({
-                      ...previous,
-                      [key]: value,
-                    }));
-                    notify("Статус проверки обновлён в демо");
-                  }}
-                />
+              <LicensesPage
+                subscriptions={subscriptions}
+                selectedService={licenseService}
+                onSelectService={setLicenseService}
+              />
               }
             />
             <Route

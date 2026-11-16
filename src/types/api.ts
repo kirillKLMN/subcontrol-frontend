@@ -41,3 +41,33 @@ export type ApiSubscriptionPatch = {
   owner?: string | null;
   status?: string | null;
 };
+
+
+export type ApiLicense = {
+  id: number;
+  subscription_id: number;
+  employee: string;
+  is_active: boolean;
+  last_activity: string | null;
+  needs_check: boolean;
+};
+
+export type ApiLicenseCreate = {
+  subscription_id: number;
+  employee: string;
+  is_active?: boolean;
+  last_activity?: string | null;
+};
+
+export type ApiLicenseWasteRow = {
+  subscription: string;
+  bought: number;
+  active: number;
+  idle: number;
+  monthly_loss: number;
+};
+
+export type ApiLicenseWaste = {
+  rows: ApiLicenseWasteRow[];
+  total_monthly_loss: number;
+};
