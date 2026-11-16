@@ -1,3 +1,12 @@
+import { createSubscription, updateSubscription } from "./api/subscriptions";
+
+import {
+  toSubscription,
+  toApiSubscriptionCreate,
+  toApiSubscriptionPatch,
+} from "./api/adapters/subscriptions";
+
+
 import WorkspaceContent from "./components/modals/WorkspaceContent";
 import HelpContent from "./components/modals/HelpContent";
 import ModalShell from "./components/modals/ModalShell";
@@ -360,13 +369,39 @@ export default function App() {
           {(modal.type === "add" || modal.type === "edit") && (
             <SubscriptionForm
               existing={modal.id ? subscriptions.find((s) => s.id === modal.id) : undefined}
-              subscriptions={subscriptions}
-              onSave={(s) => {
-                setSubscriptions((p) =>
-                  modal.type === "edit" ? p.map((x) => (x.id === s.id ? s : x)) : [...p, s],
-                );
+              subscriptions={subscriptions}             
+              onSave={async (subscription) => {
+                if (modal.type === "edit") {
+                  const updated = await updateSubscription(
+                    subscription.id,
+                    toApiSubscriptionPatch(subscription),
+                  );
+
+                  const updatedSubscription = toSubscription(updated);
+
+                  setSubscriptions((previous) =>
+                    previous.map((item) =>
+                      item.id === updatedSubscription.id
+                        ? updatedSubscription
+                        : item,
+                    ),
+                  );
+
+                  notify("Подписка успешно обновлена");
+                } else {
+                  const created = await createSubscription(
+                    toApiSubscriptionCreate(subscription),
+                  );
+
+                  setSubscriptions((previous) => [
+                    ...previous,
+                    toSubscription(created),
+                  ]);
+
+                  notify("Подписка успешно создана");
+                }
+
                 setModal(null);
-                notify("Подписка сохранена в демо-реестре");
               }}
             />
           )}

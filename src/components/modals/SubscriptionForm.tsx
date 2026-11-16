@@ -6,7 +6,7 @@ import Icon from "../ui/Icon";
 type SubscriptionFormProps = {
   existing?: Subscription;
   subscriptions: Subscription[];
-  onSave: (subscription: Subscription) => void;
+  onSave: (subscription: Subscription) => Promise<void>;
 };
 
 export default function SubscriptionForm({
@@ -14,7 +14,11 @@ export default function SubscriptionForm({
   subscriptions,
   onSave,
 }: SubscriptionFormProps) {
-  const [name, setName] = useState(existing?.name || "");
+  const [name, setName] = useState(existing?.name ?? "");
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const isEditing = Boolean(existing);
 
   const similar = subscriptions.filter(
     (subscription) =>
@@ -25,27 +29,54 @@ export default function SubscriptionForm({
         .includes(name.trim().toLowerCase()),
   );
 
+  async function handleSubmit(
+    event: React.SubmitEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+
+    if (isSaving) return;
+
+    const formData = new FormData(event.currentTarget);
+    const trimmedName = name.trim();
+
+    if (!trimmedName) {
+      setError("Укажите название сервиса");
+      return;
+    }
+
+    const subscription: Subscription = {
+      id: existing?.id ?? Date.now(),
+      name: trimmedName,
+      vendor: String(formData.get("vendor") ?? "").trim(),
+      tariff: String(formData.get("tariff") ?? "").trim(),
+      price: Number(formData.get("price")),
+      currency:
+        existing?.currency ??
+        String(formData.get("currency") ?? "RUB"),
+      renewal: String(formData.get("renewal") ?? ""),
+      paySource: String(formData.get("paySource") ?? ""),
+      owner: String(formData.get("owner") ?? "").trim(),
+      status: String(formData.get("status") ?? "Активна"),
+    };
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      await onSave(subscription);
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Не удалось сохранить подписку",
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-
-        const data = new FormData(event.currentTarget);
-
-        onSave({
-          id: existing?.id || Date.now(),
-          name: name.trim(),
-          vendor: String(data.get("vendor")).trim(),
-          tariff: String(data.get("tariff")).trim(),
-          price: Number(data.get("price")),
-          currency: String(data.get("currency")),
-          renewal: String(data.get("renewal")),
-          paySource: String(data.get("paySource")),
-          owner: String(data.get("owner")).trim(),
-          status: String(data.get("status")),
-        });
-      }}
-    >
+    <form onSubmit={handleSubmit}>
       <p className="form-intro">
         Укажите условия подписки. Оплата выполняется вне SubControl.
       </p>
@@ -59,6 +90,7 @@ export default function SubscriptionForm({
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder="Например, Figma"
+            readOnly={isEditing}
           />
         </label>
 
@@ -67,8 +99,10 @@ export default function SubscriptionForm({
             <Icon name="warning" size={18} />
             <span>
               Похожее название:{" "}
-              {similar.map((subscription) => subscription.name).join(", ")}.
-              Проверьте вручную — это не подтверждённый дубль.
+              {similar
+                .map((subscription) => subscription.name)
+                .join(", ")}
+              . Проверьте вручную — это не подтверждённый дубль.
             </span>
           </div>
         )}
@@ -78,7 +112,7 @@ export default function SubscriptionForm({
           <input
             name="vendor"
             required
-            defaultValue={existing?.vendor}
+            defaultValue={existing?.vendor ?? ""}
             placeholder="Название компании"
           />
         </label>
@@ -88,7 +122,7 @@ export default function SubscriptionForm({
           <input
             name="tariff"
             required
-            defaultValue={existing?.tariff}
+            defaultValue={existing?.tariff ?? ""}
             placeholder="Professional"
           />
         </label>
@@ -110,7 +144,8 @@ export default function SubscriptionForm({
           Валюта
           <select
             name="currency"
-            defaultValue={existing?.currency || "RUB"}
+            defaultValue={existing?.currency ?? "RUB"}
+            disabled={isEditing}
           >
             <option value="RUB">RUB — Российский рубль</option>
             <option value="USD">USD — Доллар США</option>
@@ -119,12 +154,11 @@ export default function SubscriptionForm({
         </label>
 
         <label>
-          Дата продления *
+          Дата продления
           <input
             name="renewal"
-            required
             type="date"
-            defaultValue={existing?.renewal}
+            defaultValue={existing?.renewal ?? ""}
           />
         </label>
 
@@ -132,11 +166,11 @@ export default function SubscriptionForm({
           Статус
           <select
             name="status"
-            defaultValue={existing?.status || "Активна"}
+            defaultValue={existing?.status ?? "Активна"}
           >
-            <option>Активна</option>
-            <option>Trial</option>
-            <option>Отменена</option>
+            <option value="Активна">Активна</option>
+            <option value="Trial">Trial</option>
+            <option value="Отменена">Отменена</option>
           </select>
         </label>
 
@@ -145,7 +179,7 @@ export default function SubscriptionForm({
           <input
             name="owner"
             required
-            defaultValue={existing?.owner || "Анна Смирнова"}
+            defaultValue={existing?.owner ?? ""}
             placeholder="Имя и фамилия"
           />
         </label>
@@ -154,19 +188,34 @@ export default function SubscriptionForm({
           Источник оплаты
           <input
             name="paySource"
-            defaultValue={existing?.paySource}
-            placeholder="По счёту, карта…"
+            defaultValue={existing?.paySource ?? ""}
+            placeholder="По счёту, карта..."
           />
         </label>
       </div>
 
+      {error && (
+        <p className="form-hint" role="alert">
+          Ошибка сохранения: {error}
+        </p>
+      )}
+
       <div className="modal-actions">
         <span className="form-hint">
-          * Обязательные поля · демо
+          * Обязательные поля
         </span>
 
-        <button className="btn primary" type="submit">
-          Сохранить подписку
+        <button
+          className="btn primary"
+          type="submit"
+          disabled={isSaving}
+        >
+          {isSaving
+            ? "Сохранение..."
+            : isEditing
+              ? "Сохранить изменения"
+              : "Сохранить подписку"}
+
           <Icon name="check" size={17} />
         </button>
       </div>
