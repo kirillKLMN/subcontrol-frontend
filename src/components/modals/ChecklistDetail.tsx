@@ -31,9 +31,11 @@ export default function ChecklistDetail({
     (item) => item.revoked && item.returned,
   ).length;
 
-  const allCompleted = checklist.items.every(
-    (item) => item.revoked && item.returned,
-  );
+  const allCompleted =
+    checklist.items.length > 0 &&
+    checklist.items.every(
+      (item) => item.revoked && item.returned,
+    );
 
   const handleItemChange = async (
     index: number,
