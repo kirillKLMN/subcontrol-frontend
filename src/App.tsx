@@ -38,6 +38,7 @@ import type { Approval, Subscription, Checklist } from "./data";
 import { createApproval, getApprovals, decideApproval } from "./api/approvals";
 import { toApproval, toApprovals } from "./api/adapters/approvals";
 import { getSubscriptionsForUi } from "./api/subscriptions";
+import { getLicenses } from "./api/licenses";
 
 import { getOffboardingChecklists, createOffboardingChecklist, updateOffboardingItem, closeOffboardingChecklist } from "./api/offboarding";
 import { toChecklist, toChecklists } from "./api/adapters/offboarding";
@@ -109,7 +110,8 @@ export default function App() {
   const [period, setPeriod] = useState("30");
   const [taskTab, setTaskTab] = useState("Все действия");
   const [decisions, setDecisions] = useState<Record<number, string>>({});
-  const checkedLicenses: Record<string, string> = {};
+  const [reviewCount, setReviewCount] = useState<number | null>(null);
+  const [reviewCountError, setReviewCountError] = useState(false);
   const [licenseService, setLicenseService] = useState("Все сервисы");
   const notify = (text: string) => {
     setToast(text);
@@ -221,6 +223,36 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (page !== 0) return;
+
+    let active = true;
+
+    async function loadReviewCount() {
+      try {
+        const licenses = await getLicenses();
+
+        if (active) {
+          setReviewCount(
+            licenses.filter((license) => license.needs_check).length,
+          );
+          setReviewCountError(false);
+        }
+      } catch {
+        if (active) {
+          setReviewCount(null);
+          setReviewCountError(true);
+        }
+      }
+    }
+
+    void loadReviewCount();
+
+    return () => {
+      active = false;
+    };
+  }, [page]);
+
   const go = (index: number) => {
     const destination = navigation[index];
 
@@ -232,19 +264,19 @@ export default function App() {
 
   const activeSubs = subscriptions.filter((s) => s.status !== "Отменена");
   const renewals = activeSubs
-    .filter((s) => daysLeft(s.renewal) <= 30)
+    .filter((subscription) => {
+      const remainingDays = daysLeft(subscription.renewal);
+
+      return (
+        Number.isFinite(remainingDays) &&
+        remainingDays >= 0 &&
+        remainingDays <= 30
+      );
+    })
     .sort((a, b) => a.renewal.localeCompare(b.renewal));
   const pending = approvals.filter((a) => a.status === "sent" || a.status === "needs_info");
   const openChecklists = checklists.filter((c) => !c.closed);
-  const reviewCount = ["Figma", "Notion", "Slack"]
-    .flatMap((name) =>
-      [0, 1, 2].map(
-        (i) =>
-          checkedLicenses[`${name}-${i}`] ||
-          (i === 0 || (i === 1 && name !== "Slack") ? "Требует проверки" : "Подтверждено"),
-      ),
-    )
-    .filter((status) => status !== "Подтверждено").length;
+
   if (page === -1) {
     return <Navigate to="/" replace />;
   }
@@ -339,6 +371,7 @@ export default function App() {
                   pending={pending}
                   openChecklists={openChecklists}
                   reviewCount={reviewCount}
+                  reviewCountError={reviewCountError}
                   decisions={decisions}
                   taskTab={taskTab}
                   onTaskTabChange={setTaskTab}

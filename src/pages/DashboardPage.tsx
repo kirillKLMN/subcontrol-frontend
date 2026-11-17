@@ -14,7 +14,8 @@ type DashboardPageProps = {
   renewals: Subscription[];
   pending: Approval[];
   openChecklists: Checklist[];
-  reviewCount: number;
+  reviewCount: number | null;
+  reviewCountError: boolean;
   decisions: Record<number, string>;
   taskTab: string;
   onTaskTabChange: (tab: string) => void;
@@ -30,6 +31,7 @@ export default function DashboardPage({
   pending,
   openChecklists,
   reviewCount,
+  reviewCountError,
   decisions,
   taskTab,
   onTaskTabChange,
@@ -37,15 +39,21 @@ export default function DashboardPage({
   onOpenModal,
   onOpenSubscription,
 }: DashboardPageProps) {
+  const todayLabel = new Date().toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
   return (
     <>
       <div className="overview-meta">
         <span>
           <span className="live-dot" />
-          Обзор на 18 июня 2025
+          Обзор на {todayLabel}
         </span>
         <span>
-          Демонстрационные данные <Icon name="info" size={14} />
+          Данные SubControl <Icon name="info" size={14} />
         </span>
       </div>
       <div className="stats-grid">
@@ -76,8 +84,12 @@ export default function DashboardPage({
           },
           {
             label: "Лицензии к проверке",
-            value: reviewCount,
-            sub: "Требуют вашего внимания",
+            value: reviewCount ?? "—",
+            sub: reviewCountError
+              ? "Не удалось загрузить лицензии"
+              : reviewCount === null
+                ? "Загружаем данные..."
+                : "Требуют вашего внимания",
             icon: "people",
             color: "pink",
             target: 2,
