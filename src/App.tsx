@@ -316,6 +316,13 @@ export default function App() {
   for (const [id, record] of Object.entries(currentRenewals)) {
     decisions[Number(id)] = record.decision;
   }
+  const offboardingServices = [
+    ...new Set(
+      subscriptions
+        .map((subscription) => subscription.name.trim())
+        .filter((name) => name.length > 0),
+    ),
+  ].sort((a, b) => a.localeCompare(b, "ru"));
   const activeSubs = subscriptions.filter((s) => s.status !== "Отменена");
   const renewals = activeSubs
     .filter((subscription) => {
@@ -800,6 +807,9 @@ export default function App() {
                 ))}
                 {modal.type === "new-checklist" && (
                   <NewChecklist
+                    availableServices={offboardingServices}
+                    servicesLoading={subscriptionsLoading}
+                    servicesError={subscriptionsError}
                     onSave={async (data) => {
                       const created = await createOffboardingChecklist({
                         employee: data.employee,

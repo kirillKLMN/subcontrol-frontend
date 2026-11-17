@@ -55,7 +55,7 @@ export default function OffboardingPage({
               </div>
 
               <h2>{checklist.employee}</h2>
-              <p>{checklist.role}</p>
+              <p>Сервисов в чек-листе: {checklist.items.length}</p>
 
               <div className="progress-track">
                 <div

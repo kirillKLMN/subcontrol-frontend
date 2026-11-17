@@ -5,26 +5,20 @@ import ServiceLogo from "../ui/ServiceLogo";
 
 export type NewChecklistData = {
   employee: string;
-  role: string;
   services: string[];
 };
 
 type NewChecklistProps = {
+  availableServices: string[];
+  servicesLoading: boolean;
+  servicesError: string | null;
   onSave: (data: NewChecklistData) => Promise<void>;
 };
 
-const availableServices = [
-  "Figma",
-  "Notion",
-  "Slack",
-  "Miro",
-  "OnlyOffice",
-  "Zoom",
-  "Linear",
-  "Dropbox",
-];
-
 export default function NewChecklist({
+  availableServices,
+  servicesLoading,
+  servicesError,
   onSave,
 }: NewChecklistProps) {
   const [services, setServices] = useState<string[]>([]);
@@ -53,7 +47,6 @@ export default function NewChecklist({
 
     const data: NewChecklistData = {
       employee: String(formData.get("employee") ?? "").trim(),
-      role: String(formData.get("role") ?? "").trim(),
       services: [...services],
     };
 
@@ -96,39 +89,48 @@ export default function NewChecklist({
           />
         </label>
 
-        <label className="full">
-          Должность / подразделение
-          <input
-            name="role"
-            placeholder="Например, дизайнер"
-          />
-        </label>
       </div>
 
       <h3 className="detail-label">
         Сервисы для ручной проверки *
       </h3>
 
-      <div className="service-choices">
-        {availableServices.map((service) => (
-          <label key={service}>
-            <input
-              type="checkbox"
-              checked={services.includes(service)}
-              disabled={submitting}
-              onChange={(event) =>
-                toggleService(
-                  service,
-                  event.target.checked,
-                )
-              }
-            />
+{servicesLoading ? (
+  <p className="form-hint" role="status">
+    Загружаем список сервисов...
+  </p>
+) : servicesError ? (
+  <p className="field-error" role="alert">
+    Не удалось загрузить сервисы: {servicesError}
+  </p>
+) : availableServices.length === 0 ? (
+  <p className="form-hint">
+    В реестре пока нет подписок.
+    Сначала добавьте хотя бы один сервис.
+  </p>
+) : (
+  <div className="service-choices">
+    {availableServices.map((service) => (
+      <label key={service}>
+        <input
+          type="checkbox"
+          checked={services.includes(service)}
+          disabled={submitting}
+          onChange={(event) =>
+            toggleService(
+              service,
+              event.target.checked,
+            )
+          }
+        />
 
-            <ServiceLogo name={service} small />
-            {service}
-          </label>
-        ))}
-      </div>
+        <ServiceLogo name={service} small />
+        {service}
+      </label>
+    ))}
+  </div>
+)}
+
 
       {error && (
         <p className="field-error" role="alert">
@@ -144,7 +146,12 @@ export default function NewChecklist({
         <button
           className="btn primary"
           type="submit"
-          disabled={!services.length || submitting}
+          disabled={
+            !services.length ||
+            submitting ||
+            servicesLoading ||
+            Boolean(servicesError)
+          }
         >
           {submitting
             ? "Создаём..."
