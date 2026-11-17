@@ -1,5 +1,8 @@
 import { useState } from "react";
 
+import type {
+  RenewalDecisionValue,
+} from "../../utils/renewalDecisions";
 import type { Subscription } from "../../data";
 import { daysLeft, dateLabel, money } from "../../data";
 
@@ -10,12 +13,17 @@ import ServiceLogo from "../ui/ServiceLogo";
 type RenewalDetailProps = {
   subscription: Subscription;
   decision?: string;
-  onDecision: (decision: string) => void;
+  savedComment?: string;
+  onDecision: (
+    decision: RenewalDecisionValue,
+    comment: string,
+  ) => void;
 };
 
 export default function RenewalDetail({
   subscription: s,
   decision,
+  savedComment,
   onDecision,
 }: RenewalDetailProps) {
   const [choice, setChoice] = useState(
@@ -26,7 +34,7 @@ export default function RenewalDetail({
         : "Продлить",
   );
 
-  const [comment, setComment] = useState("");
+  const [comment, setComment] = useState(savedComment ?? "");
   const [confirm, setConfirm] = useState(false);
 
   return (
@@ -79,13 +87,13 @@ export default function RenewalDetail({
             setConfirm(true);
             return;
           }
-
           onDecision(
             choice === "Продлить"
               ? "Подготовить продление"
               : choice === "Отменить"
                 ? "Подготовить отмену"
                 : "Запрошено уточнение",
+            comment.trim(),
           );
         }}
       >
@@ -117,10 +125,10 @@ export default function RenewalDetail({
         </label>
 
         <div className="inline-note">
-          Это фиксация следующего шага в прототипе,
-          не платёж, не продление и не отмена у
-          поставщика. Комментарий не отправляется
-          и не сохраняется в API.
+          Решение и комментарий сохраняются только
+          в этом браузере. Они не передаются в API,
+          не продлевают подписку и не отменяют её
+          у поставщика.
         </div>
 
         {confirm && (

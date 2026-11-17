@@ -1,3 +1,13 @@
+import {
+  loadRenewalDecisions,
+  getCurrentRenewalDecisions,
+  saveRenewalDecisions,
+} from "./utils/renewalDecisions";
+
+import type {
+  StoredRenewalDecisions,
+} from "./utils/renewalDecisions";
+
 import { createSubscription, updateSubscription } from "./api/subscriptions";
 
 import {
@@ -109,7 +119,10 @@ export default function App() {
   const [toast, setToast] = useState("");
   const [period, setPeriod] = useState("30");
   const [taskTab, setTaskTab] = useState("Все действия");
-  const [decisions, setDecisions] = useState<Record<number, string>>({});
+  const [storedRenewals, setStoredRenewals] =
+  useState<StoredRenewalDecisions>(
+    () => loadRenewalDecisions(),
+  );
   const [reviewCount, setReviewCount] = useState<number | null>(null);
   const [reviewCountError, setReviewCountError] = useState(false);
   const [licenseService, setLicenseService] = useState("Все сервисы");
@@ -253,6 +266,37 @@ export default function App() {
     };
   }, [page]);
 
+  useEffect(() => {
+    if (subscriptionsLoading || subscriptionsError) {
+      return;
+    }
+
+    const current = getCurrentRenewalDecisions(
+      storedRenewals,
+      subscriptions,
+    );
+
+    if (
+      Object.keys(current).length ===
+      Object.keys(storedRenewals).length
+    ) {
+      return;
+    }
+
+    try {
+      saveRenewalDecisions(current);
+    } catch {
+      // Отображение продолжит работать.
+      // Старые решения не будут считаться актуальными.
+    }
+
+  }, [
+    subscriptions,
+    subscriptionsLoading,
+    subscriptionsError,
+    storedRenewals,
+  ]);
+
   const go = (index: number) => {
     const destination = navigation[index];
 
@@ -262,6 +306,16 @@ export default function App() {
 
   };
 
+  const currentRenewals = getCurrentRenewalDecisions(
+    storedRenewals,
+    subscriptions,
+  );
+
+  const decisions: Record<number, string> = {};
+
+  for (const [id, record] of Object.entries(currentRenewals)) {
+    decisions[Number(id)] = record.decision;
+  }
   const activeSubs = subscriptions.filter((s) => s.status !== "Отменена");
   const renewals = activeSubs
     .filter((subscription) => {
@@ -631,23 +685,47 @@ export default function App() {
                   }}
                 />
               ))}
-          {modal.type === "renewal" &&
-            (() => {
-              const s = subscriptions.find((x) => x.id === modal.id)!;
-              return (
-                <RenewalDetail
-                  subscription={s}
-                  decision={decisions[s.id]}
-                  onDecision={(d) => {
-                    setDecisions((p) => ({ ...p, [s.id]: d }));
-                    notify(
-                      "Решение зафиксировано в демо. Продление и оплата выполняются вне SubControl.",
+              {modal.type === "renewal" &&
+                subscriptions
+                  .filter((subscription) => subscription.id === modal.id)
+                  .map((subscription) => {
+                    const saved = currentRenewals[String(subscription.id)];
+
+                    return (
+                      <RenewalDetail
+                        key={subscription.id}
+                        subscription={subscription}
+                        decision={saved?.decision}
+                        savedComment={saved?.comment}
+                        onDecision={(decision, comment) => {
+                          const updated: StoredRenewalDecisions = {
+                            ...currentRenewals,
+                            [String(subscription.id)]: {
+                              renewalDate: subscription.renewal,
+                              decision,
+                              comment,
+                            },
+                          };
+
+                          try {
+                            saveRenewalDecisions(updated);
+                          } catch {
+                            notify(
+                              "Не удалось сохранить решение в браузере",
+                            );
+                            return;
+                          }
+
+                          setStoredRenewals(updated);
+                          setModal(null);
+
+                          notify(
+                            "Локальное решение сохранено в этом браузере",
+                          );
+                        }}
+                      />
                     );
-                    setModal(null);
-                  }}
-                />
-              );
-            })()}
+                  })}
             {modal.type === "checklist" &&
               checklists
                 .filter((checklist) => checklist.id === modal.id)
