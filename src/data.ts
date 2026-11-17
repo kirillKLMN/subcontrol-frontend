@@ -26,7 +26,12 @@ export type Checklist = {
   employee: string;
   role: string;
   closed: boolean;
-  items: { name: string; revoked: boolean; returned: boolean }[];
+  items: {
+    id?: number;
+    name: string;
+    revoked: boolean;
+    returned: boolean;
+  }[];
 };
 export const initialSubscriptions: Subscription[] = [
   {
