@@ -88,7 +88,7 @@ export default function ChecklistDetail({
 
         <div>
           <h2>{checklist.employee}</h2>
-          <p>{checklist.role}</p>
+          <p>Сервисов в чек-листе: {checklist.items.length}</p>
         </div>
 
         {checklist.closed && (
