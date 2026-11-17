@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import type { Checklist } from "../../data";
 
 import Avatar from "../ui/Avatar";
@@ -13,8 +15,8 @@ type ChecklistDetailProps = {
     index: number,
     field: ChecklistField,
     checked: boolean,
-  ) => void;
-  onComplete: () => void;
+  ) => Promise<void>;
+  onComplete: () => Promise<void>;
 };
 
 export default function ChecklistDetail({
@@ -22,6 +24,9 @@ export default function ChecklistDetail({
   onItemChange,
   onComplete,
 }: ChecklistDetailProps) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
   const completedCount = checklist.items.filter(
     (item) => item.revoked && item.returned,
   ).length;
@@ -29,6 +34,49 @@ export default function ChecklistDetail({
   const allCompleted = checklist.items.every(
     (item) => item.revoked && item.returned,
   );
+
+  const handleItemChange = async (
+    index: number,
+    field: ChecklistField,
+    checked: boolean,
+  ) => {
+    if (saving || checklist.closed) return;
+
+    setSaving(true);
+    setError("");
+
+    try {
+      await onItemChange(index, field, checked);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Не удалось сохранить изменение",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+  const handleComplete = async () => {
+    if (saving || checklist.closed || !allCompleted) {
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+
+    try {
+      await onComplete();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Не удалось закрыть чек-лист",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <>
@@ -49,8 +97,8 @@ export default function ChecklistDetail({
       </div>
 
       <div className="inline-note">
-        Демо-сценарий. Сервисы указаны вручную;
-        автоматического отключения нет.
+        Сервисы указаны вручную;
+        автоматического отключения доступов нет.
       </div>
 
       <table className="checklist-table">
@@ -64,7 +112,7 @@ export default function ChecklistDetail({
 
         <tbody>
           {checklist.items.map((item, index) => (
-            <tr key={index}>
+            <tr key={item.id ?? index}>
               <td>
                 <div className="service-cell">
                   <ServiceLogo
@@ -82,20 +130,20 @@ export default function ChecklistDetail({
                     <label className="checkbox-label">
                       <input
                         type="checkbox"
-                        disabled={checklist.closed}
+                        disabled={checklist.closed || saving}
                         checked={item[field]}
                         aria-label={`${item.name}: ${
                           field === "revoked"
                             ? "доступ отозван"
                             : "лицензия возвращена"
                         }`}
-                        onChange={(event) =>
-                          onItemChange(
+                        onChange={(event) => {
+                          void handleItemChange(
                             index,
                             field,
                             event.target.checked,
-                          )
-                        }
+                          );
+                        }}
                       />
 
                       {item[field] ? "Да" : "Нет"}
@@ -108,6 +156,12 @@ export default function ChecklistDetail({
         </tbody>
       </table>
 
+      {error && (
+        <p className="field-error" role="alert">
+          {error}
+        </p>
+      )}
+
       <div className="modal-actions">
         <p className="muted">
           {completedCount} из {checklist.items.length}{" "}
@@ -116,8 +170,10 @@ export default function ChecklistDetail({
 
         <button
           className="btn primary"
-          disabled={checklist.closed || !allCompleted}
-          onClick={onComplete}
+          disabled={
+            checklist.closed || !allCompleted || saving
+          }
+          onClick={() => void handleComplete()}
         >
           {checklist.closed
             ? "Чек-лист закрыт"

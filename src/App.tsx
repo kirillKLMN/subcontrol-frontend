@@ -31,18 +31,16 @@ import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router"
 
 import { useCallback, useEffect, useState } from "react";
 
-import {
-  initialChecklists,
-  daysLeft,
-} from "./data";
+import { daysLeft } from "./data";
 
-import type { Approval, Subscription } from "./data";
+import type { Approval, Subscription, Checklist } from "./data";
 
 import { createApproval, getApprovals, decideApproval } from "./api/approvals";
 import { toApproval, toApprovals } from "./api/adapters/approvals";
 import { getSubscriptionsForUi } from "./api/subscriptions";
 
-
+import { getOffboardingChecklists, createOffboardingChecklist, updateOffboardingItem, closeOffboardingChecklist } from "./api/offboarding";
+import { toChecklist, toChecklists } from "./api/adapters/offboarding";
 
 const navigation = [
   { title: "Обзор", icon: "grid", path: "/" },
@@ -100,7 +98,9 @@ export default function App() {
   const [approvals, setApprovals] = useState<Approval[]>([]);
   const [approvalsLoading, setApprovalsLoading] = useState(true);
   const [approvalsError, setApprovalsError] = useState<string | null>(null);
-  const [checklists, setChecklists] = useState(initialChecklists);
+  const [checklists, setChecklists] = useState<Checklist[]>([]);
+  const [offboardingLoading, setOffboardingLoading] = useState(true);
+  const [offboardingError, setOffboardingError] = useState<string | null>(null);
   const [modal, setModal] = useState<Modal | null>(null);
   const closeModal = useCallback(() => {
   setModal(null);
@@ -182,6 +182,39 @@ export default function App() {
     }
 
     void loadApprovals();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadOffboarding() {
+      try {
+        const data = await getOffboardingChecklists();
+
+        if (active) {
+          setChecklists(toChecklists(data));
+          setOffboardingError(null);
+        }
+      } catch (error) {
+        if (active) {
+          setOffboardingError(
+            error instanceof Error
+              ? error.message
+              : "Не удалось загрузить чек-листы",
+          );
+        }
+      } finally {
+        if (active) {
+          setOffboardingLoading(false);
+        }
+      }
+    }
+
+    void loadOffboarding();
 
     return () => {
       active = false;
@@ -286,8 +319,16 @@ export default function App() {
             <div className="inline-note" role="alert">
               Не удалось загрузить заявки: {approvalsError}
             </div>
+          ) : page === 5 && offboardingLoading ? (
+            <div className="inline-note" role="status">
+              Загружаем чек-листы...
+            </div>
+          ) : page === 5 && offboardingError ? (
+            <div className="inline-note" role="alert">
+              Не удалось загрузить чек-листы: {offboardingError}
+            </div>
           ) : (
-          <Routes>
+            <Routes>
             <Route
               path="/"
               element={
@@ -581,31 +622,57 @@ export default function App() {
                   <ChecklistDetail
                     key={checklist.id}
                     checklist={checklist}
-                    onItemChange={(index, field, checked) => {
+                    onItemChange={async (index, field, checked) => {
+                      if (checklist.closed) {
+                        throw new Error("Закрытый чек-лист нельзя изменять");
+                      }
+
+                      const item = checklist.items[index];
+
+                      if (!item || item.id === undefined) {
+                        throw new Error("Не найден ID пункта чек-листа");
+                      }
+
+                      const updated = await updateOffboardingItem(
+                        item.id,
+                        field === "revoked"
+                          ? { access_revoked: checked }
+                          : { license_returned: checked },
+                      );
+
                       setChecklists((previous) =>
                         previous.map((current) =>
-                          current.id === checklist.id && !current.closed
+                          current.id === checklist.id
                             ? {
                                 ...current,
-                                items: current.items.map((item, itemIndex) =>
-                                  itemIndex === index
-                                    ? { ...item, [field]: checked }
-                                    : item,
+                                items: current.items.map((currentItem) =>
+                                  currentItem.id === updated.id
+                                    ? {
+                                        ...currentItem,
+                                        revoked: updated.access_revoked,
+                                        returned: updated.license_returned,
+                                      }
+                                    : currentItem,
                                 ),
                               }
                             : current,
                         ),
                       );
                     }}
-                    onComplete={() => {
+                    onComplete={async () => {
                       if (
                         checklist.closed ||
+                        checklist.items.length === 0 ||
                         !checklist.items.every(
                           (item) => item.revoked && item.returned,
                         )
                       ) {
-                        return;
+                        throw new Error(
+                          "Для закрытия необходимо выполнить все пункты",
+                        );
                       }
+
+                      await closeOffboardingChecklist(checklist.id);
 
                       setChecklists((previous) =>
                         previous.map((current) =>
@@ -615,20 +682,37 @@ export default function App() {
                         ),
                       );
 
-                      notify("Чек-лист закрыт");
                       setModal(null);
+                      notify("Чек-лист успешно закрыт");
                     }}
                   />
                 ))}
-          {modal.type === "new-checklist" && (
-            <NewChecklist
-              onSave={(c) => {
-                setChecklists((p) => [...p, c]);
-                setModal({ type: "checklist", id: c.id });
-                notify("Ручной чек-лист создан");
-              }}
-            />
-          )}
+                {modal.type === "new-checklist" && (
+                  <NewChecklist
+                    onSave={async (data) => {
+                      const created = await createOffboardingChecklist({
+                        employee: data.employee,
+                        services: data.services,
+                      });
+
+                      const checklist = toChecklist(created);
+
+                      setChecklists((previous) => [
+                        checklist,
+                        ...previous,
+                      ]);
+
+                      setOffboardingError(null);
+
+                      setModal({
+                        type: "checklist",
+                        id: checklist.id,
+                      });
+
+                      notify("Чек-лист успешно создан");
+                    }}
+                  />
+                )}
           {modal.type === "help" && <HelpContent />}
           {modal.type === "workspace" && (
             <WorkspaceContent onContinue={closeModal} />
