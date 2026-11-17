@@ -11,9 +11,6 @@ export function toChecklist(
     id: apiChecklist.id,
     employee: apiChecklist.employee,
 
-    // Backend пока не возвращает должность.
-    role: "—",
-
     closed: apiChecklist.status === "closed",
 
     items: apiChecklist.items.map((item) => ({
