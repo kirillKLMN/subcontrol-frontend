@@ -7,10 +7,15 @@ import Icon from "../ui/Icon";
 import Badge from "../ui/Badge";
 import ServiceLogo from "../ui/ServiceLogo";
 
+type DecisionStatus = "approved" | "rejected" | "needs_info";
+
 type ApprovalDetailProps = {
   approval: Approval;
   subscriptions: Subscription[];
-  onDecision: (status: string, comment: string) => void;
+  onDecision: (
+    status: DecisionStatus,
+    comment: string,
+  ) => Promise<void>;
 };
 
 export default function ApprovalDetail({
@@ -18,12 +23,46 @@ export default function ApprovalDetail({
   subscriptions,
   onDecision,
 }: ApprovalDetailProps) {
-  const [comment, setComment] = useState(a.comment);
+  const [comment, setComment] = useState(a.comment ?? "");
   const [confirmReject, setConfirmReject] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const finished =
     a.status === "approved" || a.status === "rejected";
+
+  const handleDecision = async (status: DecisionStatus) => {
+    if (saving || finished) return;
+
+    const trimmedComment = comment.trim();
+
+    if (
+      (status === "rejected" || status === "needs_info") &&
+      !trimmedComment
+    ) {
+      setError(
+        status === "rejected"
+          ? "Укажите причину отказа"
+          : "Укажите, что нужно уточнить",
+      );
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+
+    try {
+      await onDecision(status, trimmedComment);
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Не удалось сохранить решение",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <>
@@ -87,7 +126,7 @@ export default function ApprovalDetail({
         Комментарий ответственного
 
         <textarea
-          disabled={finished}
+          disabled={finished || saving}
           value={comment}
           onChange={(event) => {
             setComment(event.target.value);
@@ -107,14 +146,15 @@ export default function ApprovalDetail({
       {!finished && (
         <>
           <div className="inline-note">
-            Одобрение создаст демо-запись в реестре
-            с примером даты продления. Условия нужно
-            проверить вручную.
+            При одобрении подписка автоматически создаётся
+            в реестре. Дату продления, ответственного
+            и условия оплаты потребуется уточнить вручную.
           </div>
 
           <div className="modal-actions wrap">
             <button
               className="btn danger"
+              disabled={saving}
               onClick={() => {
                 if (!comment.trim()) {
                   setError("Укажите причину отказа");
@@ -129,23 +169,18 @@ export default function ApprovalDetail({
 
             <button
               className="btn"
-              onClick={() => {
-                if (!comment.trim()) {
-                  setError("Укажите, что нужно уточнить");
-                  return;
-                }
-
-                onDecision("needs_info", comment);
-              }}
+              disabled={saving}
+              onClick={() => void handleDecision("needs_info")}
             >
               Запросить уточнение
             </button>
 
             <button
               className="btn primary"
-              onClick={() => onDecision("approved", comment)}
+              disabled={saving}
+              onClick={() => void handleDecision("approved")}
             >
-              Одобрить
+              {saving ? "Сохраняем..." : "Одобрить"}
               <Icon name="check" size={16} />
             </button>
           </div>
@@ -156,13 +191,15 @@ export default function ApprovalDetail({
 
               <button
                 className="btn danger"
-                onClick={() => onDecision("rejected", comment)}
+                disabled={saving}
+                onClick={() => void handleDecision("rejected")}
               >
-                Да, отклонить
+                {saving ? "Сохраняем..." : "Да, отклонить"}
               </button>
 
               <button
                 className="btn"
+                disabled={saving}
                 onClick={() => setConfirmReject(false)}
               >
                 Назад

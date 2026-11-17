@@ -32,12 +32,14 @@ import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router"
 import { useCallback, useEffect, useState } from "react";
 
 import {
-  initialApprovals,
   initialChecklists,
   daysLeft,
 } from "./data";
 
-import type { Subscription } from "./data";
+import type { Approval, Subscription } from "./data";
+
+import { createApproval, getApprovals, decideApproval } from "./api/approvals";
+import { toApproval, toApprovals } from "./api/adapters/approvals";
 import { getSubscriptionsForUi } from "./api/subscriptions";
 
 
@@ -95,7 +97,9 @@ export default function App() {
 
   const [subscriptionsError, setSubscriptionsError] = useState<string | null>(null);
 
-  const [approvals, setApprovals] = useState(initialApprovals);
+  const [approvals, setApprovals] = useState<Approval[]>([]);
+  const [approvalsLoading, setApprovalsLoading] = useState(true);
+  const [approvalsError, setApprovalsError] = useState<string | null>(null);
   const [checklists, setChecklists] = useState(initialChecklists);
   const [modal, setModal] = useState<Modal | null>(null);
   const closeModal = useCallback(() => {
@@ -151,7 +155,39 @@ export default function App() {
     };
   }, []);
 
-  
+  useEffect(() => {
+    let active = true;
+
+    async function loadApprovals() {
+      try {
+        const data = await getApprovals();
+
+        if (active) {
+          setApprovals(toApprovals(data));
+          setApprovalsError(null);
+        }
+      } catch (error) {
+        if (active) {
+          setApprovalsError(
+            error instanceof Error
+              ? error.message
+              : "Не удалось загрузить заявки",
+          );
+        }
+      } finally {
+        if (active) {
+          setApprovalsLoading(false);
+        }
+      }
+    }
+
+    void loadApprovals();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const go = (index: number) => {
     const destination = navigation[index];
 
@@ -235,14 +271,22 @@ export default function App() {
             </div>
           </div>
           {(page === 0 || page === 1 || page === 3) && subscriptionsLoading ? (
-          <div className="inline-note" role="status">
-            Загружаем подписки...
-          </div>
-        ) : (page === 0 || page === 1 || page === 3) && subscriptionsError ? (
-          <div className="inline-note" role="alert">
-            Не удалось загрузить подписки: {subscriptionsError}
-          </div>
-        ) : (
+            <div className="inline-note" role="status">
+              Загружаем подписки...
+            </div>
+          ) : (page === 0 || page === 1 || page === 3) && subscriptionsError ? (
+            <div className="inline-note" role="alert">
+              Не удалось загрузить подписки: {subscriptionsError}
+            </div>
+          ) : page === 4 && approvalsLoading ? (
+            <div className="inline-note" role="status">
+              Загружаем заявки...
+            </div>
+          ) : page === 4 && approvalsError ? (
+            <div className="inline-note" role="alert">
+              Не удалось загрузить заявки: {approvalsError}
+            </div>
+          ) : (
           <Routes>
             <Route
               path="/"
@@ -432,51 +476,87 @@ export default function App() {
           {modal.type === "request" && (
             <RequestForm
               subscriptions={subscriptions}
-              onSave={(a) => {
-                setApprovals((p) => [...p, a]);
+              onSave={async (request) => {
+                const created = await createApproval({
+                  service_name: request.name,
+                  tariff: request.tariff,
+                  price_month: String(request.price),
+                  reason: request.goal,
+                  link: request.url,
+                });
+
+                setApprovals((previous) => [
+                  toApproval(created),
+                  ...previous,
+                ]);
+
                 setModal(null);
-                notify("Заявка отправлена в демо-очередь");
+                notify("Заявка успешно отправлена на согласование");
               }}
             />
           )}
           {modal.type === "approval" &&
-            (() => {
-              const a = approvals.find((x) => x.id === modal.id)!;
-              return (
+            approvals
+              .filter((approval) => approval.id === modal.id)
+              .map((approval) => (
                 <ApprovalDetail
-                  approval={a}
+                  key={approval.id}
+                  approval={approval}
                   subscriptions={subscriptions}
-                  onDecision={(status, comment) => {
-                    if (a.status === "approved" || a.status === "rejected") return;
-                    setApprovals((p) =>
-                      p.map((x) => (x.id === a.id ? { ...x, status, comment } : x)),
+                  onDecision={async (status, comment) => {
+                    if (
+                      approval.status === "approved" ||
+                      approval.status === "rejected"
+                    ) {
+                      return;
+                    }
+
+                    const updated = await decideApproval(
+                      approval.id,
+                      {
+                        decision: status,
+                        comment: comment || null,
+                      },
                     );
-                    if (status === "approved")
-                      setSubscriptions((p) => [
-                        ...p,
-                        {
-                          id: Date.now(),
-                          name: a.name,
-                          tariff: a.tariff,
-                          vendor: a.name,
-                          price: a.price,
-                          currency: "RUB",
-                          renewal: "2025-07-18",
-                          owner: "Анна Смирнова",
-                          status: "Активна",
-                          paySource: "Не указан",
-                        },
-                      ]);
-                    notify(
-                      status === "approved"
-                        ? "Заявка одобрена. Демо-запись добавлена в реестр; уточните условия."
-                        : "Решение по заявке сохранено в демо",
+
+                    setApprovals((previous) =>
+                      previous.map((item) =>
+                        item.id === approval.id
+                          ? toApproval(updated)
+                          : item,
+                      ),
                     );
+
                     setModal(null);
+
+                    if (status === "approved") {
+                      try {
+                        const updatedSubscriptions =
+                          await getSubscriptionsForUi();
+
+                        setSubscriptions(updatedSubscriptions);
+                        setSubscriptionsError(null);
+
+                        notify(
+                          "Заявка одобрена. Подписка добавлена в реестр.",
+                        );
+                      } catch {
+                        notify(
+                          "Решение сохранено, но реестр не обновился. Обновите страницу.",
+                        );
+                      }
+
+                      return;
+                    }
+
+                    notify(
+                      status === "rejected"
+                        ? "Заявка отклонена"
+                        : "Запрос уточнения сохранён",
+                    );
                   }}
                 />
-              );
-            })()}
+              ))}
           {modal.type === "renewal" &&
             (() => {
               const s = subscriptions.find((x) => x.id === modal.id)!;
