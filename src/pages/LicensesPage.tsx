@@ -17,8 +17,6 @@ type LicensesPageProps = {
   onSelectService: (service: string) => void;
 };
 
-type CheckStatus = "review" | "confirmed";
-
 function formatActivity(date: string | null): string {
   if (!date) return "Не указана";
 
@@ -38,14 +36,16 @@ function getUsage(license: ApiLicense): {
   tone: "amber" | "neutral";
 } {
   if (!license.is_active) {
-    return { label: "Не пользуюсь", tone: "amber" };
+    return {
+      label: "Неактивна",
+      tone: "amber",
+    };
   }
 
-  if (!license.last_activity) {
-    return { label: "Нет ответа", tone: "neutral" };
-  }
-
-  return { label: "Пользуюсь", tone: "neutral" };
+  return {
+    label: "Активна",
+    tone: "neutral",
+  };
 }
 
 export default function LicensesPage({
@@ -91,38 +91,37 @@ export default function LicensesPage({
     };
   }, []);
 
-  async function handleCheckStatusChange(
-    license: ApiLicense,
-    status: CheckStatus,
-  ) {
-    if (savingId !== null) return;
+async function handleUsageChange(
+  license: ApiLicense,
+  inUse: boolean,
+) {
+  if (savingId !== null) return;
 
-    setSavingId(license.id);
-    setSaveError(null);
+  setSavingId(license.id);
+  setSaveError(null);
 
-    try {
-      // Backend check-in принимает только ответ
-      // «пользуется / не пользуется».
-      const updated = await checkInLicense(
-        license.id,
-        status === "confirmed",
-      );
+  try {
+    const updated = await checkInLicense(
+      license.id,
+      inUse,
+    );
 
-      setLicenses((previous) =>
-        previous.map((item) =>
-          item.id === updated.id ? updated : item,
-        ),
-      );
-    } catch (error) {
-      setSaveError(
-        error instanceof Error
-          ? error.message
-          : "Не удалось сохранить результат проверки",
-      );
-    } finally {
-      setSavingId(null);
-    }
+    setLicenses((previous) =>
+      previous.map((item) =>
+        item.id === updated.id ? updated : item,
+      ),
+    );
+  } catch (error) {
+    setSaveError(
+      error instanceof Error
+        ? error.message
+        : "Не удалось сохранить результат проверки",
+    );
+  } finally {
+    setSavingId(null);
   }
+}
+
 
   const serviceById = new Map(
     subscriptions.map((subscription) => [
@@ -227,7 +226,7 @@ export default function LicensesPage({
                     <th>Сервис</th>
                     <th>Сотрудник</th>
                     <th>Последняя активность</th>
-                    <th>Пользуетесь?</th>
+                    <th>Активность</th>
                     <th>Статус проверки</th>
                   </tr>
                 </thead>
@@ -236,11 +235,9 @@ export default function LicensesPage({
                   {filteredRows.map(({ license, service }) => {
                     const usage = getUsage(license);
 
-                    const status: CheckStatus =
-                      license.needs_check
-                        ? "review"
-                        : "confirmed";
-
+                    const status = license.needs_check
+                      ? "review"
+                      : "clear";
                     return (
                       <tr key={license.id}>
                         <td>
@@ -273,47 +270,48 @@ export default function LicensesPage({
                         </td>
 
                         <td>
-                          <select
-                            aria-label={`Статус проверки: ${service}, ${license.employee}`}
-                            value={status}
-                            className={
-                              status === "review"
-                                ? "select-amber"
-                                : "select-green"
+                        <select
+                          aria-label={`Статус проверки: ${service}, ${license.employee}`}
+                          value={status}
+                          className={
+                            status === "review"
+                              ? "select-amber"
+                              : "select-green"
+                          }
+                          disabled={savingId !== null}
+                          onChange={(event) => {
+                            const action = event.target.value;
+
+                            if (action === "uses") {
+                              void handleUsageChange(license, true);
                             }
-                            disabled={savingId !== null}
-                            onChange={(event) => {
-                              const nextStatus =
-                                event.target.value;
 
-                              if (
-                                nextStatus !== "review" &&
-                                nextStatus !== "confirmed"
-                              ) {
-                                return;
-                              }
+                            if (action === "not_uses") {
+                              void handleUsageChange(license, false);
+                            }
+                          }}
+                        >
+                          <option value="review" disabled>
+                            Требует проверки
+                          </option>
 
-                              void handleCheckStatusChange(
-                                license,
-                                nextStatus,
-                              );
-                            }}
-                          >
-                            <option value="review">
-                              Требует проверки
-                            </option>
+                          <option value="clear" disabled>
+                            Проверка не требуется
+                          </option>
 
-                            <option
-                              value="request"
-                              disabled
-                            >
-                              Запросить подтверждение
-                            </option>
+                          <option value="request" disabled>
+                            Запросить подтверждение — недоступно
+                          </option>
 
-                            <option value="confirmed">
-                              Подтверждено
-                            </option>
-                          </select>
+                          <option value="uses">
+                            Зафиксировать: пользуется
+                          </option>
+
+                          <option value="not_uses">
+                            Зафиксировать: не пользуется
+                          </option>
+                        </select>
+
                         </td>
                       </tr>
                     );
@@ -321,7 +319,6 @@ export default function LicensesPage({
                 </tbody>
               </table>
             </div>
-
             {filteredRows.length === 0 && (
               <Empty
                 title="Назначения не найдены"
