@@ -42,16 +42,21 @@ import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router"
 import { useCallback, useEffect, useState } from "react";
 
 import { daysLeft } from "./data";
+import { useSubscriptions } from "./hooks/useSubscriptions";
+import { useApprovals } from "./hooks/useApprovals";
+import { useOffboarding } from "./hooks/useOffboarding";
 
-import type { Approval, Subscription, Checklist } from "./data";
-
-import { createApproval, getApprovals, decideApproval } from "./api/approvals";
-import { toApproval, toApprovals } from "./api/adapters/approvals";
+import { createApproval, decideApproval } from "./api/approvals";
+import { toApproval } from "./api/adapters/approvals";
 import { getSubscriptionsForUi } from "./api/subscriptions";
 import { getLicenses } from "./api/licenses";
 
-import { getOffboardingChecklists, createOffboardingChecklist, updateOffboardingItem, closeOffboardingChecklist } from "./api/offboarding";
-import { toChecklist, toChecklists } from "./api/adapters/offboarding";
+import {
+  createOffboardingChecklist,
+  updateOffboardingItem,
+  closeOffboardingChecklist,
+} from "./api/offboarding";
+import { toChecklist } from "./api/adapters/offboarding";
 
 const navigation = [
   { title: "Обзор", icon: "grid", path: "/" },
@@ -100,18 +105,27 @@ export default function App() {
     (item) => item.path === location.pathname
   );
   
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const {
+    subscriptions,
+    setSubscriptions,
+    subscriptionsLoading,
+    subscriptionsError,
+    setSubscriptionsError,
+  } = useSubscriptions();
 
-  const [subscriptionsLoading, setSubscriptionsLoading] = useState(true);
-
-  const [subscriptionsError, setSubscriptionsError] = useState<string | null>(null);
-
-  const [approvals, setApprovals] = useState<Approval[]>([]);
-  const [approvalsLoading, setApprovalsLoading] = useState(true);
-  const [approvalsError, setApprovalsError] = useState<string | null>(null);
-  const [checklists, setChecklists] = useState<Checklist[]>([]);
-  const [offboardingLoading, setOffboardingLoading] = useState(true);
-  const [offboardingError, setOffboardingError] = useState<string | null>(null);
+  const {
+    approvals,
+    setApprovals,
+    approvalsLoading,
+    approvalsError,
+  } = useApprovals();
+  const {
+    checklists,
+    setChecklists,
+    offboardingLoading,
+    offboardingError,
+    setOffboardingError,
+  } = useOffboarding();
   const [modal, setModal] = useState<Modal | null>(null);
   const closeModal = useCallback(() => {
   setModal(null);
@@ -135,106 +149,6 @@ export default function App() {
       return () => clearTimeout(t);
     }
   }, [toast]);
-
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadSubscriptions() {
-      try {
-        const data = await getSubscriptionsForUi();
-
-        if (active) {
-          setSubscriptions(data);
-          setSubscriptionsError(null);
-        }
-      } catch (error) {
-        if (active) {
-          setSubscriptionsError(
-            error instanceof Error
-              ? error.message
-              : "Не удалось загрузить подписки",
-          );
-        }
-      } finally {
-        if (active) {
-          setSubscriptionsLoading(false);
-        }
-      }
-    }
-
-    void loadSubscriptions();
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadApprovals() {
-      try {
-        const data = await getApprovals();
-
-        if (active) {
-          setApprovals(toApprovals(data));
-          setApprovalsError(null);
-        }
-      } catch (error) {
-        if (active) {
-          setApprovalsError(
-            error instanceof Error
-              ? error.message
-              : "Не удалось загрузить заявки",
-          );
-        }
-      } finally {
-        if (active) {
-          setApprovalsLoading(false);
-        }
-      }
-    }
-
-    void loadApprovals();
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadOffboarding() {
-      try {
-        const data = await getOffboardingChecklists();
-
-        if (active) {
-          setChecklists(toChecklists(data));
-          setOffboardingError(null);
-        }
-      } catch (error) {
-        if (active) {
-          setOffboardingError(
-            error instanceof Error
-              ? error.message
-              : "Не удалось загрузить чек-листы",
-          );
-        }
-      } finally {
-        if (active) {
-          setOffboardingLoading(false);
-        }
-      }
-    }
-
-    void loadOffboarding();
-
-    return () => {
-      active = false;
-    };
-  }, []);
 
   useEffect(() => {
     if (page !== 0) return;
