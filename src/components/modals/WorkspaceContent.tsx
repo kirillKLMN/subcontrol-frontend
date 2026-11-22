@@ -1,28 +1,39 @@
+import type { UserRole } from "../../types/auth";
+import { formatUserRoles } from "../../utils/userRoles";
+
 type WorkspaceContentProps = {
+  organizationName: string;
+  userName: string;
+  userEmail: string;
+  roles: UserRole[];
   onContinue: () => void;
 };
 
 export default function WorkspaceContent({
+  organizationName,
+  userName,
+  userEmail,
+  roles,
   onContinue,
 }: WorkspaceContentProps) {
   return (
     <div className="help-content">
       <div className="employee-heading">
         <span className="workspace-symbol">
-          П
+          {organizationName.charAt(0).toLocaleUpperCase("ru")}
         </span>
 
         <div>
-          <h2>Демо-компания</h2>
-          <p>Пространство команды</p>
+          <h2>{organizationName}</h2>
+          <p>Ваше рабочее пространство</p>
         </div>
       </div>
 
       <p>
-        Вы находитесь в демонстрационном
-        пространстве. Данные условные,
-        роли показаны только для контекста,
-        реального разграничения прав нет.
+        Вы вошли как {userName} ({userEmail}).
+        Ваша роль: {formatUserRoles(roles)}.
+        Подписки, лицензии и заявки относятся к этой организации;
+        доступ к ним контролирует сервер.
       </p>
 
       <button

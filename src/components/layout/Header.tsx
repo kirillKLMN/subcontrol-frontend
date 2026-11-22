@@ -3,12 +3,16 @@ import Icon from "../ui/Icon";
 
 type HeaderProps = {
   pageTitle: string;
+  userName: string;
   onOpenReminders: () => void;
+  onSignOut: () => void;
 };
 
 export default function Header({
   pageTitle,
+  userName,
   onOpenReminders,
+  onSignOut,
 }: HeaderProps) {
   return (
     <header className="topbar">
@@ -18,13 +22,6 @@ export default function Header({
       </div>
 
       <div className="topbar-right">
-        <span className="demo-top">
-          <span />
-          Демо-данные
-        </span>
-
-        <span className="topbar-divider" />
-
         <button
           type="button"
           className="notification-btn"
@@ -35,7 +32,16 @@ export default function Header({
           <i />
         </button>
 
-        <Avatar name="Анна Смирнова" />
+        <Avatar name={userName} />
+        <button
+          type="button"
+          className="profile-signout"
+          aria-label="Выйти из аккаунта"
+          title="Выйти из аккаунта"
+          onClick={onSignOut}
+        >
+          <Icon name="exit" size={17} />
+        </button>
       </div>
     </header>
   );
