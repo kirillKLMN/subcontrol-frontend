@@ -1,6 +1,8 @@
 import type { Subscription } from "../data";
-
-const STORAGE_KEY = "subcontrol:renewal-decisions:v1";
+import type {
+  ApiRenewalDecision,
+  ApiRenewalDecisionValue,
+} from "../types/api";
 
 export type RenewalDecisionValue =
   | "Подготовить продление"
@@ -18,62 +20,55 @@ export type StoredRenewalDecisions = Record<
   StoredRenewalDecision
 >;
 
-const validDecisions = new Set<string>([
-  "Подготовить продление",
-  "Подготовить отмену",
-  "Запрошено уточнение",
-]);
+const apiToUi: Record<ApiRenewalDecisionValue, RenewalDecisionValue> = {
+  prepare_renewal: "Подготовить продление",
+  prepare_cancel: "Подготовить отмену",
+  needs_info: "Запрошено уточнение",
+};
 
-export function loadRenewalDecisions(): StoredRenewalDecisions {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+const uiToApi: Record<RenewalDecisionValue, ApiRenewalDecisionValue> = {
+  "Подготовить продление": "prepare_renewal",
+  "Подготовить отмену": "prepare_cancel",
+  "Запрошено уточнение": "needs_info",
+};
 
-    if (!raw) return {};
+export function toApiRenewalDecision(
+  decision: RenewalDecisionValue,
+): ApiRenewalDecisionValue {
+  return uiToApi[decision];
+}
 
-    const parsed: unknown = JSON.parse(raw);
+export function toStoredRenewalDecision(
+  action: ApiRenewalDecision,
+): StoredRenewalDecision {
+  return {
+    renewalDate: action.renewal_date,
+    decision: apiToUi[action.decision],
+    comment: action.comment,
+  };
+}
 
-    if (
-      !parsed ||
-      typeof parsed !== "object" ||
-      Array.isArray(parsed)
-    ) {
-      return {};
+export function toStoredRenewalDecisions(
+  actions: ApiRenewalDecision[],
+): StoredRenewalDecisions {
+  const result: StoredRenewalDecisions = {};
+
+  // API хранит историю: для подписки показываем последнее решение.
+  const newestFirst = [...actions].sort(
+    (first, second) =>
+      second.created_at.localeCompare(first.created_at) ||
+      second.id - first.id,
+  );
+
+  for (const action of newestFirst) {
+    const key = String(action.subscription_id);
+
+    if (!(key in result)) {
+      result[key] = toStoredRenewalDecision(action);
     }
-
-    const result: StoredRenewalDecisions = {};
-
-    for (const [id, value] of Object.entries(parsed)) {
-      if (
-        !/^\d+$/.test(id) ||
-        !value ||
-        typeof value !== "object" ||
-        Array.isArray(value)
-      ) {
-        continue;
-      }
-
-      const record = value as Record<string, unknown>;
-
-      if (
-        typeof record.renewalDate !== "string" ||
-        typeof record.decision !== "string" ||
-        !validDecisions.has(record.decision) ||
-        typeof record.comment !== "string"
-      ) {
-        continue;
-      }
-
-      result[id] = {
-        renewalDate: record.renewalDate,
-        decision: record.decision as RenewalDecisionValue,
-        comment: record.comment,
-      };
-    }
-
-    return result;
-  } catch {
-    return {};
   }
+
+  return result;
 }
 
 export function getCurrentRenewalDecisions(
@@ -96,13 +91,4 @@ export function getCurrentRenewalDecisions(
   }
 
   return result;
-}
-
-export function saveRenewalDecisions(
-  decisions: StoredRenewalDecisions,
-): void {
-  window.localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(decisions),
-  );
 }

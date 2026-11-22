@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 
 import type {
   RenewalDecisionValue,
@@ -14,16 +14,22 @@ type RenewalDetailProps = {
   subscription: Subscription;
   decision?: string;
   savedComment?: string;
+  loading: boolean;
+  loadError: string | null;
+  onRetry: () => void;
   onDecision: (
     decision: RenewalDecisionValue,
     comment: string,
-  ) => void;
+  ) => Promise<void>;
 };
 
 export default function RenewalDetail({
   subscription: s,
   decision,
   savedComment,
+  loading,
+  loadError,
+  onRetry,
   onDecision,
 }: RenewalDetailProps) {
   const [choice, setChoice] = useState(
@@ -36,6 +42,41 @@ export default function RenewalDetail({
 
   const [comment, setComment] = useState(savedComment ?? "");
   const [confirm, setConfirm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (saving || loading || loadError) return;
+
+    if (choice === "Отменить" && !confirm) {
+      setConfirm(true);
+      return;
+    }
+
+    setSaving(true);
+    setSaveError(null);
+
+    try {
+      await onDecision(
+        choice === "Продлить"
+          ? "Подготовить продление"
+          : choice === "Отменить"
+            ? "Подготовить отмену"
+            : "Запрошено уточнение",
+        comment.trim(),
+      );
+    } catch (error) {
+      setSaveError(
+        error instanceof Error
+          ? error.message
+          : "Не удалось сохранить решение",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <>
@@ -79,24 +120,7 @@ export default function RenewalDetail({
         </div>
       </div>
 
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-
-          if (choice === "Отменить" && !confirm) {
-            setConfirm(true);
-            return;
-          }
-          onDecision(
-            choice === "Продлить"
-              ? "Подготовить продление"
-              : choice === "Отменить"
-                ? "Подготовить отмену"
-                : "Запрошено уточнение",
-            comment.trim(),
-          );
-        }}
-      >
+      <form onSubmit={(event) => void handleSubmit(event)}>
         <label className="standalone-label">
           Решение
 
@@ -125,11 +149,31 @@ export default function RenewalDetail({
         </label>
 
         <div className="inline-note">
-          Решение и комментарий сохраняются только
-          в этом браузере. Они не передаются в API,
-          не продлевают подписку и не отменяют её
-          у поставщика.
+          Решение и комментарий сохраняются в вашем рабочем
+          пространстве. Подписка у поставщика не продлевается
+          и не отменяется автоматически.
         </div>
+
+        {loading && (
+          <p className="inline-note" role="status">
+            Загружаем предыдущие решения...
+          </p>
+        )}
+
+        {loadError && (
+          <div className="warning-box" role="alert">
+            Не удалось получить решения: {loadError}.{" "}
+            <button type="button" onClick={onRetry}>
+              Повторить
+            </button>
+          </div>
+        )}
+
+        {saveError && (
+          <div className="warning-box" role="alert">
+            {saveError}
+          </div>
+        )}
 
         {confirm && (
           <div className="warning-box">
@@ -142,10 +186,13 @@ export default function RenewalDetail({
           <button
             className={`btn ${confirm ? "danger" : "primary"}`}
             type="submit"
+            disabled={saving || loading || loadError !== null}
           >
-            {confirm
-              ? "Подтвердить решение"
-              : "Зафиксировать решение"}
+            {saving
+              ? "Сохраняем..."
+              : confirm
+                ? "Подтвердить решение"
+                : "Зафиксировать решение"}
 
             <Icon name="check" size={16} />
           </button>

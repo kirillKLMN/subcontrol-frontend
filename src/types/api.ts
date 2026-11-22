@@ -71,3 +71,21 @@ export type ApiLicenseWaste = {
   rows: ApiLicenseWasteRow[];
   total_monthly_loss: number;
 };
+
+export type ApiRenewalDecisionValue =
+  | "prepare_renewal"
+  | "prepare_cancel"
+  | "needs_info";
+
+export type ApiRenewalDecisionCreate = {
+  subscription_id: number;
+  renewal_date: string;
+  decision: ApiRenewalDecisionValue;
+  comment: string;
+};
+
+export type ApiRenewalDecision = ApiRenewalDecisionCreate & {
+  id: number;
+  decided_by_user_id: number | null;
+  created_at: string;
+};
