@@ -1,11 +1,5 @@
 import {
-  loadRenewalDecisions,
   getCurrentRenewalDecisions,
-  saveRenewalDecisions,
-} from "./utils/renewalDecisions";
-
-import type {
-  StoredRenewalDecisions,
 } from "./utils/renewalDecisions";
 
 import { createSubscription, updateSubscription } from "./api/subscriptions";
@@ -45,6 +39,7 @@ import { daysLeft } from "./data";
 import { useSubscriptions } from "./hooks/useSubscriptions";
 import { useApprovals } from "./hooks/useApprovals";
 import { useOffboarding } from "./hooks/useOffboarding";
+import { useRenewalDecisions } from "./hooks/useRenewalDecisions";
 import { useAuth } from "./hooks/useAuth";
 
 import { createApproval, decideApproval } from "./api/approvals";
@@ -138,10 +133,13 @@ export default function App() {
   const [toast, setToast] = useState("");
   const [period, setPeriod] = useState("30");
   const [taskTab, setTaskTab] = useState("Все действия");
-  const [storedRenewals, setStoredRenewals] =
-  useState<StoredRenewalDecisions>(
-    () => loadRenewalDecisions(),
-  );
+  const {
+    decisions: storedRenewals,
+    loading: renewalDecisionsLoading,
+    error: renewalDecisionsError,
+    retry: retryRenewalDecisions,
+    saveDecision: saveRenewalDecision,
+  } = useRenewalDecisions();
   const [reviewCount, setReviewCount] = useState<number | null>(null);
   const [reviewCountError, setReviewCountError] = useState(false);
   const [licenseService, setLicenseService] = useState("Все сервисы");
@@ -184,37 +182,6 @@ export default function App() {
       active = false;
     };
   }, [page]);
-
-  useEffect(() => {
-    if (subscriptionsLoading || subscriptionsError) {
-      return;
-    }
-
-    const current = getCurrentRenewalDecisions(
-      storedRenewals,
-      subscriptions,
-    );
-
-    if (
-      Object.keys(current).length ===
-      Object.keys(storedRenewals).length
-    ) {
-      return;
-    }
-
-    try {
-      saveRenewalDecisions(current);
-    } catch {
-      // Отображение продолжит работать.
-      // Старые решения не будут считаться актуальными.
-    }
-
-  }, [
-    subscriptions,
-    subscriptionsLoading,
-    subscriptionsError,
-    storedRenewals,
-  ]);
 
   const go = (index: number) => {
     const destination = navigation[index];
@@ -624,35 +591,21 @@ export default function App() {
 
                     return (
                       <RenewalDetail
-                        key={subscription.id}
+                        key={`${subscription.id}:${saved?.decision ?? "none"}:${saved?.comment ?? ""}`}
                         subscription={subscription}
                         decision={saved?.decision}
                         savedComment={saved?.comment}
-                        onDecision={(decision, comment) => {
-                          const updated: StoredRenewalDecisions = {
-                            ...currentRenewals,
-                            [String(subscription.id)]: {
-                              renewalDate: subscription.renewal,
-                              decision,
-                              comment,
-                            },
-                          };
-
-                          try {
-                            saveRenewalDecisions(updated);
-                          } catch {
-                            notify(
-                              "Не удалось сохранить решение в браузере",
-                            );
-                            return;
-                          }
-
-                          setStoredRenewals(updated);
-                          setModal(null);
-
-                          notify(
-                            "Локальное решение сохранено в этом браузере",
+                        loading={renewalDecisionsLoading}
+                        loadError={renewalDecisionsError}
+                        onRetry={retryRenewalDecisions}
+                        onDecision={async (decision, comment) => {
+                          await saveRenewalDecision(
+                            subscription,
+                            decision,
+                            comment,
                           );
+                          setModal(null);
+                          notify("Решение сохранено в рабочем пространстве");
                         }}
                       />
                     );
