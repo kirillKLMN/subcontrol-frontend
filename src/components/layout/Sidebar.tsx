@@ -1,5 +1,7 @@
 import Avatar from "../ui/Avatar";
 import Icon from "../ui/Icon";
+import { formatUserRoles } from "../../utils/userRoles";
+import type { UserRole } from "../../types/auth";
 
 type NavigationItem = {
   title: string;
@@ -11,6 +13,9 @@ type SidebarProps = {
   activePage: number;
   pendingCount: number;
   openChecklistCount: number;
+  userName: string;
+  organizationName: string;
+  roles: UserRole[];
   onNavigate: (page: number) => void;
   onOpenModal: (type: "workspace" | "help") => void;
 };
@@ -20,6 +25,9 @@ export default function Sidebar({
   activePage,
   pendingCount,
   openChecklistCount,
+  userName,
+  organizationName,
+  roles,
   onNavigate,
   onOpenModal,
 }: SidebarProps) {
@@ -43,10 +51,10 @@ export default function Sidebar({
         className="workspace"
         onClick={() => onOpenModal("workspace")}
       >
-        <span className="workspace-symbol">П</span>
+        <span className="workspace-symbol">{organizationName.charAt(0).toLocaleUpperCase("ru")}</span>
         <span>
           <strong>Пространство команды</strong>
-          <small>Демо-компания</small>
+          <small>{organizationName}</small>
         </span>
         <Icon name="down" size={15} />
       </button>
@@ -99,10 +107,6 @@ export default function Sidebar({
             под вашим контролем.
           </p>
 
-          <span className="demo-tag">
-            <span />
-            Демонстрационный режим
-          </span>
         </div>
 
         <button
@@ -115,10 +119,10 @@ export default function Sidebar({
         </button>
 
         <div className="sidebar-profile">
-          <Avatar name="Анна Смирнова" size="large" />
+          <Avatar name={userName} size="large" />
           <div>
-            <strong>Анна Смирнова</strong>
-            <small>Координатор</small>
+            <strong>{userName}</strong>
+            <small>{formatUserRoles(roles)}</small>
           </div>
           <span className="profile-dot" />
         </div>

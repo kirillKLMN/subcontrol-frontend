@@ -45,6 +45,7 @@ import { daysLeft } from "./data";
 import { useSubscriptions } from "./hooks/useSubscriptions";
 import { useApprovals } from "./hooks/useApprovals";
 import { useOffboarding } from "./hooks/useOffboarding";
+import { useAuth } from "./hooks/useAuth";
 
 import { createApproval, decideApproval } from "./api/approvals";
 import { toApproval } from "./api/adapters/approvals";
@@ -100,6 +101,10 @@ type Modal = { type: string; id?: number };
 export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { currentUser, signOut } = useAuth();
+  const userName = currentUser?.user.full_name ?? "Пользователь";
+  const organizationName = currentUser?.organization.name ?? "Рабочее пространство";
+  const roles = currentUser?.roles ?? [];
 
   const page = navigation.findIndex(
     (item) => item.path === location.pathname
@@ -263,13 +268,18 @@ export default function App() {
         activePage={page}
         pendingCount={pending.length}
         openChecklistCount={openChecklists.length}
+        userName={userName}
+        organizationName={organizationName}
+        roles={roles}
         onNavigate={go}
         onOpenModal={(type) => setModal({ type })}
       />
       <div className="main-shell">
         <Header
           pageTitle={navigation[page].title}
+          userName={userName}
           onOpenReminders={() => go(3)}
+          onSignOut={signOut}
         />
         <main>
           <div className="page-heading">
@@ -750,7 +760,13 @@ export default function App() {
                 )}
           {modal.type === "help" && <HelpContent />}
           {modal.type === "workspace" && (
-            <WorkspaceContent onContinue={closeModal} />
+            <WorkspaceContent
+              organizationName={organizationName}
+              userName={userName}
+              userEmail={currentUser?.user.email ?? ""}
+              roles={roles}
+              onContinue={closeModal}
+            />
           )}
         </ModalShell>
       )}
