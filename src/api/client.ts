@@ -1,3 +1,8 @@
+import {
+  clearAccessToken,
+  getAccessToken,
+} from "./session";
+
 const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ||
   "http://localhost:8000"
@@ -16,15 +21,22 @@ export class ApiError extends Error {
 
 type RequestOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
+  auth?: boolean;
 };
 
 export async function apiRequest<T>(
   endpoint: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const { body, headers, ...rest } = options;
+  const { body, headers, auth = true, ...rest } = options;
 
   const requestHeaders = new Headers(headers);
+
+  const token = auth ? getAccessToken() : null;
+
+  if (token) {
+    requestHeaders.set("Authorization", `Bearer ${token}`);
+  }
 
   const isFormData = body instanceof FormData;
 
@@ -49,6 +61,13 @@ export async function apiRequest<T>(
   });
 
   if (!response.ok) {
+    if (
+      response.status === 401 &&
+      token &&
+      getAccessToken() === token
+    ) {
+      clearAccessToken();
+    }
     let message = `Ошибка API: ${response.status}`;
 
     try {
