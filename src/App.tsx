@@ -26,6 +26,7 @@ import ApprovalsPage from "./pages/ApprovalsPage";
 import OffboardingPage from "./pages/OffboardingPage";
 import RemindersPage from "./pages/RemindersPage";
 import LicensesPage from "./pages/LicensesPage";
+import TeamPage from "./pages/TeamPage";
 import DashboardPage from "./pages/DashboardPage";
 import SubscriptionsPage from "./pages/SubscriptionsPage";
 import Icon from "./components/ui/Icon";
@@ -81,6 +82,11 @@ const navigation = [
     icon: "exit",
     path: "/offboarding",
   },
+  {
+    title: "Команда",
+    icon: "people",
+    path: "/team",
+  },
 ];
 
 const descriptions = [
@@ -90,6 +96,7 @@ const descriptions = [
   "Начните подготовку заранее — без спешки в последний день.",
   "От потребности до решения ответственного.",
   "Ручная проверка доступов и возврата лицензий.",
+  "Участники, приглашения и роли вашего рабочего пространства.",
 ];
 type Modal = { type: string; id?: number };
 
@@ -392,6 +399,7 @@ export default function App() {
                 />
               }
             />
+            <Route path="/team" element={<TeamPage />} />
           
           </Routes>
         )}
