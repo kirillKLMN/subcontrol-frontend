@@ -5,6 +5,7 @@ type HeaderProps = {
   pageTitle: string;
   userName: string;
   onOpenReminders: () => void;
+  onOpenProfile: () => void;
   onSignOut: () => void;
 };
 
@@ -12,6 +13,7 @@ export default function Header({
   pageTitle,
   userName,
   onOpenReminders,
+  onOpenProfile,
   onSignOut,
 }: HeaderProps) {
   return (
@@ -32,7 +34,15 @@ export default function Header({
           <i />
         </button>
 
-        <Avatar name={userName} />
+        <button
+          type="button"
+          className="profile-avatar-button"
+          aria-label="Открыть настройки профиля"
+          title="Настройки профиля"
+          onClick={onOpenProfile}
+        >
+          <Avatar name={userName} />
+        </button>
         <button
           type="button"
           className="profile-signout"

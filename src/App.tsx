@@ -27,6 +27,7 @@ import OffboardingPage from "./pages/OffboardingPage";
 import RemindersPage from "./pages/RemindersPage";
 import LicensesPage from "./pages/LicensesPage";
 import TeamPage from "./pages/TeamPage";
+import ProfileSettingsPage from "./pages/ProfileSettingsPage";
 import DashboardPage from "./pages/DashboardPage";
 import SubscriptionsPage from "./pages/SubscriptionsPage";
 import Icon from "./components/ui/Icon";
@@ -87,6 +88,11 @@ const navigation = [
     icon: "people",
     path: "/team",
   },
+  {
+    title: "Профиль",
+    icon: "settings",
+    path: "/settings",
+  },
 ];
 
 const descriptions = [
@@ -97,6 +103,7 @@ const descriptions = [
   "От потребности до решения ответственного.",
   "Ручная проверка доступов и возврата лицензий.",
   "Участники, приглашения и роли вашего рабочего пространства.",
+  "Управляйте личными данными и безопасностью вашего аккаунта.",
 ];
 type Modal = { type: string; id?: number };
 
@@ -246,6 +253,7 @@ export default function App() {
         organizationName={organizationName}
         roles={roles}
         onNavigate={go}
+        onOpenProfile={() => navigate("/settings")}
         onOpenModal={(type) => setModal({ type })}
       />
       <div className="main-shell">
@@ -253,6 +261,7 @@ export default function App() {
           pageTitle={navigation[page].title}
           userName={userName}
           onOpenReminders={() => go(3)}
+          onOpenProfile={() => navigate("/settings")}
           onSignOut={signOut}
         />
         <main>
@@ -400,6 +409,7 @@ export default function App() {
               }
             />
             <Route path="/team" element={<TeamPage />} />
+            <Route path="/settings" element={<ProfileSettingsPage />} />
           
           </Routes>
         )}

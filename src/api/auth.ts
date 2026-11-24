@@ -6,9 +6,12 @@ import {
 
 import type {
   AcceptInvitationInput,
+  AuthUser,
   AuthResponse,
   CurrentUser,
   LoginInput,
+  PasswordChangeInput,
+  ProfileUpdateInput,
   RegisterInput,
 } from "../types/auth";
 
@@ -43,6 +46,20 @@ export function acceptInvitation(
 
 export function getCurrentUser(): Promise<CurrentUser> {
   return apiRequest<CurrentUser>("/api/auth/me");
+}
+
+export function updateUserProfile(data: ProfileUpdateInput): Promise<AuthUser> {
+  return apiRequest<AuthUser>("/api/auth/me", {
+    method: "PATCH",
+    body: data,
+  });
+}
+
+export function changeUserPassword(data: PasswordChangeInput): Promise<void> {
+  return apiRequest<void>("/api/auth/password", {
+    method: "PATCH",
+    body: data,
+  });
 }
 
 export function logout(): void {

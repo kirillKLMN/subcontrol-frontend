@@ -17,6 +17,7 @@ type SidebarProps = {
   organizationName: string;
   roles: UserRole[];
   onNavigate: (page: number) => void;
+  onOpenProfile: () => void;
   onOpenModal: (type: "workspace" | "help") => void;
 };
 
@@ -29,6 +30,7 @@ export default function Sidebar({
   organizationName,
   roles,
   onNavigate,
+  onOpenProfile,
   onOpenModal,
 }: SidebarProps) {
   return (
@@ -118,14 +120,20 @@ export default function Sidebar({
           <Icon name="arrow" size={16} />
         </button>
 
-        <div className="sidebar-profile">
+        <button
+          type="button"
+          className="sidebar-profile"
+          aria-label="Открыть настройки профиля"
+          title="Настройки профиля"
+          onClick={onOpenProfile}
+        >
           <Avatar name={userName} size="large" />
           <div>
             <strong>{userName}</strong>
             <small>{formatUserRoles(roles)}</small>
           </div>
           <span className="profile-dot" />
-        </div>
+        </button>
       </div>
     </aside>
   );

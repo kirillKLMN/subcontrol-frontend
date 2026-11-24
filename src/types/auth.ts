@@ -43,3 +43,12 @@ export type AcceptInvitationInput = {
   token: string;
   password: string;
 };
+
+export type ProfileUpdateInput = {
+  full_name: string;
+};
+
+export type PasswordChangeInput = {
+  current_password: string;
+  new_password: string;
+};

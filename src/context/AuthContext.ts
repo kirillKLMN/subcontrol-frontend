@@ -4,6 +4,7 @@ import type {
   AcceptInvitationInput,
   CurrentUser,
   LoginInput,
+  ProfileUpdateInput,
   RegisterInput,
 } from "../types/auth";
 
@@ -24,6 +25,8 @@ export type AuthContextValue = {
   acceptInvite: (
     data: AcceptInvitationInput,
   ) => Promise<void>;
+
+  updateProfile: (data: ProfileUpdateInput) => Promise<void>;
 
   signOut: () => void;
   retry: () => Promise<void>;

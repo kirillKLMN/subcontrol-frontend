@@ -13,6 +13,7 @@ import {
   login,
   logout,
   register,
+  updateUserProfile,
 } from "../api/auth";
 
 import {
@@ -168,6 +169,31 @@ export function AuthProvider({
 
     acceptInvite: async (data) =>
       applyAuthResponse(await acceptInvitation(data)),
+
+    updateProfile: async (data) => {
+      const token = getAccessToken();
+      const updatedUser = await updateUserProfile(data);
+
+      if (!token || getAccessToken() !== token) return;
+
+      setAuth((previous) => {
+        if (
+          previous.status !== "authenticated" ||
+          !previous.currentUser ||
+          previous.currentUser.user.id !== updatedUser.id
+        ) {
+          return previous;
+        }
+
+        return {
+          ...previous,
+          currentUser: {
+            ...previous.currentUser,
+            user: updatedUser,
+          },
+        };
+      });
+    },
 
     signOut: () => logout(),
 

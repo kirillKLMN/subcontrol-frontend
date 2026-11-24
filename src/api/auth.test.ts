@@ -6,7 +6,12 @@ import {
   vi,
 } from "vitest";
 
-import { login, logout } from "./auth";
+import {
+  changeUserPassword,
+  login,
+  logout,
+  updateUserProfile,
+} from "./auth";
 
 describe("auth API", () => {
   afterEach(() => {
@@ -71,5 +76,60 @@ describe("auth API", () => {
     expect(
       stored.has("subcontrol.accessToken"),
     ).toBe(false);
+  });
+
+  it("обновляет имя через PATCH /api/auth/me с авторизацией", async () => {
+    const stored = new Map([["subcontrol.accessToken", "test-jwt"]]);
+    vi.stubGlobal("window", {
+      sessionStorage: {
+        getItem: (key: string) => stored.get(key) ?? null,
+        setItem: (key: string, value: string) => stored.set(key, value),
+        removeItem: (key: string) => stored.delete(key),
+      },
+    });
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({
+        id: 1,
+        email: "kirill@example.com",
+        full_name: "Кирилл Новый",
+      }), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const user = await updateUserProfile({ full_name: "Кирилл Новый" });
+    expect(user.full_name).toBe("Кирилл Новый");
+
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain("/api/auth/me");
+    expect(options.method).toBe("PATCH");
+    expect(JSON.parse(options.body as string)).toEqual({ full_name: "Кирилл Новый" });
+    expect(new Headers(options.headers).get("Authorization")).toBe("Bearer test-jwt");
+  });
+
+  it("обрабатывает 204 после смены пароля", async () => {
+    const stored = new Map([["subcontrol.accessToken", "test-jwt"]]);
+    vi.stubGlobal("window", {
+      sessionStorage: {
+        getItem: (key: string) => stored.get(key) ?? null,
+        setItem: (key: string, value: string) => stored.set(key, value),
+        removeItem: (key: string) => stored.delete(key),
+      },
+    });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(changeUserPassword({
+      current_password: "old-password",
+      new_password: "new-password",
+    })).resolves.toBeUndefined();
+
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain("/api/auth/password");
+    expect(options.method).toBe("PATCH");
+    expect(JSON.parse(options.body as string)).toEqual({
+      current_password: "old-password",
+      new_password: "new-password",
+    });
   });
 });
